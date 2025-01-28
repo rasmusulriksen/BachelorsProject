@@ -1,3 +1,7 @@
+# Questions to be answered
+- Should the gateway create a tracingId/correlationId that is propagated with all subsequent requests?
+- Or should we "just" use Dapr for all communication which then provides out-of-the-box distributed tracing
+
 ```mermaid
 flowchart TB
 
@@ -37,19 +41,24 @@ flowchart TB
 
     Client2((client2.imsdigitalpost.dk))
 
-    subgraph MessageQueueAPI
-        MessageQueueAPIDescription["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling"]:::description
-        MessageQueueDB@{ shape: cyl, label: "MessageQueueDB \n -PostgreSQL"}
+    subgraph MessageQueueAPI1
+        MessageQueueAPI1Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability)"]:::description
+        MessageQueueDB1@{ shape: cyl, label: "MessageQueueDB1 \n -PostgreSQL"}
+    end
+
+    subgraph MessageQueueAPI2
+        MessageQueueAPI2Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability)"]:::description
+        MessageQueueDB2@{ shape: cyl, label: "MessageQueueDB2 \n -PostgreSQL"}
     end
 
     
     subgraph NotificationOrchestratorWorker
-        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotification() dynamically populates templates with FluentEmail <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB"]:::description
+        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent"]:::description
         NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB"}
     end
 
     subgraph EmailSenderWorker
-        EmailSenderWorkerDescription["<br>- C# ServiceWorker <br>- Receives a ready-to-send message and just sends it. <br> -Can be used for all sending purposes throughout the system (single-notification emails, aggregated-notifications emails)"]:::description
+        EmailSenderWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Fetches a batch of ready-to-send messages and just sends them. Simple as that. <br> -Can be used for all sending purposes throughout the system (single-notification emails, aggregated-notifications emails)"]:::description
     end
 
     subgraph EmailTemplateAPI
@@ -74,23 +83,25 @@ flowchart TB
     Client2 -->|Integrates with| ExternalAPI
 
     LegacyMonolith -->|Requests| InternalAPI
-    LegacyMonolith -->|Publishes message| MessageQueueAPI
+    LegacyMonolith -->|Publishes notification| MessageQueueAPI1
 
-    InternalAPI -->|Publishes message| MessageQueueAPI
+    InternalAPI -->|Publishes notification| MessageQueueAPI1
 
     InternalAPI -->|"CRUD custom email templates"| EmailTemplateAPI
 
     InternalAPI -->|"CRUD notification settings"| NotificationSettingsAPI
 
-    ExternalAPI -->|Publishes message| MessageQueueAPI
+    ExternalAPI -->|Publishes notification| MessageQueueAPI1
 
-    MessageQueueAPI -->|Subscribes to message|NotificationOrchestratorWorker
+    MessageQueueAPI1 -->|Every 10 seconds: Fetches notifications|NotificationOrchestratorWorker
 
     NotificationOrchestratorWorker -->|"Checks notification settings (Just the frequency setting)"|NotificationSettingsAPI
 
     NotificationOrchestratorWorker -->|"Fetches template (cached locally with 10 min TTL)"|EmailTemplateAPI
 
-    NotificationOrchestratorWorker -->|"Sends the 'done' email HTML and email metadata"|EmailSenderWorker
+    NotificationOrchestratorWorker -->|"Publishes notification"|MessageQueueAPI2
+
+    MessageQueueAPI2 -->|"Every 10 seconds: Fetches notifications"|EmailSenderWorker
     
     EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server (external)"]
 ```
