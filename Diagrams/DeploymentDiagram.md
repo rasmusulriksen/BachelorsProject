@@ -1,8 +1,10 @@
 ```mermaid
 flowchart TB
 
+    %% Styling
     classDef description stroke-width:0px, color:#fff, fill:transparent, font-size:12px
 
+    %% Components
     Client1((client1.imscase.dk))
     
     subgraph Frontend
@@ -17,16 +19,16 @@ flowchart TB
             TenantAPIDescription["\- C# API <br> \- Wraps a database holding tenant info <br> \- Tells the Gateway which Keycloak realm to authenticate up against"]:::description
         end
         subgraph Gateway
-            GatewayDescription["\- C# API <br> \- Authenticates <br> \- Identifies tenant <br> \- Forwards request with tenantId in HTTP header"]:::description
+            GatewayDescription["\- C# API <br> \- Authenticates <br> \- Identifies tenant <br> \- Forwards request with tenantId and JWT (is tenantId baked into JWT?)"]:::description
         end
     end
     
     subgraph Backend
-        subgraph IMSCaseAPI
-            IMSCaseAPIDescription["\- C# API <br> \- Public <br> \- Authorizes requests <br> \- Only for basic use cases"]:::description
+        subgraph ExternalAPI
+            ExternalAPIDescription["\- C# API <br> \- Public <br> \- Authorizes requests <br> \- Only for basic use cases"]:::description
         end
-        subgraph WebAppAPI
-            WebAppAPIDescription["\- C# API <br> \- Private <br> \- Only reachable from Gateway and LegacyMonolith <br> \- Authorizes requests <br>"]:::description
+        subgraph InternalAPI
+            InternalAPIDescription["\- C# API <br> \- Private <br> \- Only reachable from Gateway and LegacyMonolith <br> \- Authorizes requests <br>"]:::description
         end
         subgraph LegacyMonolith
             LegacyMonolithDescription["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
@@ -35,39 +37,41 @@ flowchart TB
 
     Client2((client2.imsdigitalpost.dk))
 
-    %% Message Queue
-    MessageQueue(["MessageQueue <br> \- Dapr pub/sub"])
+    MessageQueueSendEmail(["MessageQueue <br>\- SendEmail<br> \- Dapr pub/sub"])
     
-    subgraph EmailService
-        EmailServiceDescription["\- C# ServiceWorker <br>\- Holds a list of email templates <br> \- Dynamically populates templates with FluentEmail"]:::description
+    subgraph EmailSenderWorker
+        EmailSenderWorkerDescription["\- C# ServiceWorker <br>\- Dynamically populates templates with FluentEmail"]:::description
+    end
+
+
+    subgraph EmailTemplateAPI
+        EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates"]:::description
+        EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB" }
     end
     
-    %% External Systems
-    Client1MailInbox
-
     %% Relationships
     Client1 -->|Interacts with| Frontend
     Frontend -->|Requests| Gateway
-    Gateway -->|Authenticates| Keycloak
-    Keycloak -->|Returns JWT| Gateway
+    Gateway -->|"Authenticates (receives JWT)"| Keycloak
     Gateway -->|Queries tenant info| TenantAPI
-    TenantAPI -->|Returns TenantInfo| Gateway
     
-    Gateway -->|"Forwards request to <br> \(if route includes /newapi/\)"| WebAppAPI
+    Gateway -->|"Forwards request to <br> \(if route includes /newapi/\)"| InternalAPI
     Gateway -->|Forwards request to| LegacyMonolith
 
-    Client2 -->|Integrates with| IMSCaseAPI
+    Client2 -->|Integrates with| ExternalAPI
 
-    LegacyMonolith -->|Requests| WebAppAPI
-    LegacyMonolith -->|Publishes message| MessageQueue
+    LegacyMonolith -->|Requests| InternalAPI
+    LegacyMonolith -->|Publishes message| MessageQueueSendEmail
 
-    WebAppAPI -->|Publishes message| MessageQueue
+    InternalAPI -->|Publishes message| MessageQueueSendEmail
 
-    IMSCaseAPI -->|Publishes message| MessageQueue
+    InternalAPI -->|"Create new custom email template"| EmailTemplateAPI
 
-    MessageQueue -->|Subscribes to message| EmailService
+    EmailSenderWorker -->|Reads email template| EmailTemplateAPI
 
-    EmailService -->|Sends email content and  metadata to| SMTPServer
+    ExternalAPI -->|Publishes message| MessageQueueSendEmail
 
-    SMTPServer -->|Sends email to| Client1MailInbox[clientname\@clientdomain.dk]
+    MessageQueueSendEmail -->|Subscribes to message| EmailSenderWorker
+
+    EmailSenderWorker -->|Sends email content and  metadata to| SMTPServer["SMTPServer (external)"]
 ```
