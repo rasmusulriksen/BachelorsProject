@@ -5,24 +5,35 @@ sequenceDiagram
     participant Gateway
     participant Keycloak
     participant TenantAPI
-    participant IMSCaseAPI
-    participant Client1Monolith
+    participant LegacyMonolith
+    participant MonolithToDaprProxyAPI
     participant MessageQueue
-    participant EmailService
-    participant Client1EmailDB
-    participant Client1MailInbox
+    participant EmailSenderWorker
+    participant NotificationSettingsAPI
+    participant SMTPServer as SMTPServer (external)
 
-    Client1->>Frontend: Make a Request
-    Frontend->>Gateway: Process Request
-    Gateway->>Keycloak: Authenticate Client1
-    Keycloak-->>Gateway: Return JWT Token
-    Gateway->>TenantAPI: Fetch Tenant Info
-    TenantAPI-->>Gateway: Return Tenant Info
-    Gateway->>IMSCaseAPI: Forward Request
-    IMSCaseAPI->>Client1Monolith: Request for Process
-    Client1Monolith-->>IMSCaseAPI: Return Processed Data
-    IMSCaseAPI->>MessageQueue: Send Message for Email
-    MessageQueue-->>EmailService: Read Message
-    EmailService->>Client1EmailDB: Read/Write Email Data
-    EmailService->>Client1MailInbox: Send Email Notification
+    Client1->>Frontend: Upload document to case
+    Frontend->>Gateway: POST api/upload
+    Gateway->>Keycloak: Authenticate user
+    Keycloak->>Gateway: JWT
+    Gateway->>TenantAPI: Get tenant info
+    TenantAPI->>Gateway: Tenant info
+    Gateway->>LegacyMonolith: POST api/upload
+    LegacyMonolith->>LegacyMonolith: Uploads document to case
+    LegacyMonolith->>MonolithToDaprProxyAPI: POST api/sendemail
+    MonolithToDaprProxyAPI->>MessageQueue: _daprClient.PublishEventAsync("sendemail")
+    MonolithToDaprProxyAPI->>LegacyMonolith: Returns 200 OK
+    LegacyMonolith->>Gateway: Returns 200 OK
+    Gateway->>Frontend: Returns 200 OK
+    Frontend->>Client1: Displays succes
+    MessageQueue->>EmailSenderWorker: _daprClient.SubscribeToTopicAsync("sendemail")
+    EmailSenderWorker->>NotificationSettingsAPI: Check user's notification frequency
+    NotificationSettingsAPI-->>EmailSenderWorker: Frequency preference: daily at 4 AM
+    EmailSenderWorker->>EmailSenderWorker: Queue/Store notification
+    
+    Note over EmailSenderWorker: Notifications stored for a 4 AM digest.
+    opt [At 4 AM]
+        EmailSenderWorker->>NotificationSettingsAPI: Aggregate pending notifications
+        EmailSenderWorker->>SMTPServer: Send aggregated email summary
+    end
 ```

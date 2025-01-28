@@ -37,16 +37,29 @@ flowchart TB
 
     Client2((client2.imsdigitalpost.dk))
 
-    MessageQueueSendEmail(["MessageQueue <br>\- SendEmail<br> \- Dapr pub/sub"])
-    
-    subgraph EmailSenderWorker
-        EmailSenderWorkerDescription["\- C# ServiceWorker <br>\- Dynamically populates templates with FluentEmail"]:::description
+    subgraph MessageQueueAPI
+        MessageQueueAPIDescription["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling"]:::description
+        MessageQueueDB@{ shape: cyl, label: "MessageQueueDB \n -PostgreSQL"}
     end
 
+    
+    subgraph NotificationOrchestratorWorker
+        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotification() dynamically populates templates with FluentEmail <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB"]:::description
+        NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB"}
+    end
+
+    subgraph EmailSenderWorker
+        EmailSenderWorkerDescription["<br>- C# ServiceWorker <br>- Receives a ready-to-send message and just sends it. <br> -Can be used for all sending purposes throughout the system (single-notification emails, aggregated-notifications emails)"]:::description
+    end
 
     subgraph EmailTemplateAPI
         EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates"]:::description
         EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB" }
+    end
+
+    subgraph NotificationSettingsAPI
+        NotificationSettingsAPIDescription["<br>- C# API <br>- Each tenant can configure very specific notification settings which are stored here. In this first iteration it will only be frequency (Immediate, 8am, 12 am, 4pm)"]:::description
+        NotificationSettingsDB@{ shape: cyl, label: "NotificationSettingsDB" }
     end
     
     %% Relationships
@@ -61,17 +74,23 @@ flowchart TB
     Client2 -->|Integrates with| ExternalAPI
 
     LegacyMonolith -->|Requests| InternalAPI
-    LegacyMonolith -->|Publishes message| MessageQueueSendEmail
+    LegacyMonolith -->|Publishes message| MessageQueueAPI
 
-    InternalAPI -->|Publishes message| MessageQueueSendEmail
+    InternalAPI -->|Publishes message| MessageQueueAPI
 
-    InternalAPI -->|"Create new custom email template"| EmailTemplateAPI
+    InternalAPI -->|"CRUD custom email templates"| EmailTemplateAPI
 
-    EmailSenderWorker -->|Reads email template| EmailTemplateAPI
+    InternalAPI -->|"CRUD notification settings"| NotificationSettingsAPI
 
-    ExternalAPI -->|Publishes message| MessageQueueSendEmail
+    ExternalAPI -->|Publishes message| MessageQueueAPI
 
-    MessageQueueSendEmail -->|Subscribes to message| EmailSenderWorker
+    MessageQueueAPI -->|Subscribes to message|NotificationOrchestratorWorker
 
-    EmailSenderWorker -->|Sends email content and  metadata to| SMTPServer["SMTPServer (external)"]
+    NotificationOrchestratorWorker -->|"Checks notification settings (Just the frequency setting)"|NotificationSettingsAPI
+
+    NotificationOrchestratorWorker -->|"Fetches template (cached locally with 10 min TTL)"|EmailTemplateAPI
+
+    NotificationOrchestratorWorker -->|"Sends the 'done' email HTML and email metadata"|EmailSenderWorker
+    
+    EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server (external)"]
 ```
