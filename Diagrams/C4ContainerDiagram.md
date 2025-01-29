@@ -42,23 +42,23 @@ flowchart TB
     Client2((client2.imsdigitalpost.dk))
 
     subgraph MessageQueueAPI1
-        MessageQueueAPI1Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability)"]:::description
+        MessageQueueAPI1Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability) <br>- table: notifications_to_be_orchestrated"]:::description
         MessageQueueDB1@{ shape: cyl, label: "MessageQueueDB1 \n -PostgreSQL"}
     end
 
     subgraph MessageQueueAPI2
-        MessageQueueAPI2Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability)"]:::description
+        MessageQueueAPI2Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability) <br>- table: notifications_to_be_sent"]:::description
         MessageQueueDB2@{ shape: cyl, label: "MessageQueueDB2 \n -PostgreSQL"}
     end
 
     
     subgraph NotificationOrchestratorWorker
-        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent"]:::description
+        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifcations from the bale 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent"]:::description
         NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB"}
     end
 
     subgraph EmailSenderWorker
-        EmailSenderWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Fetches a batch of ready-to-send messages and just sends them. Simple as that. <br> -Can be used for all sending purposes throughout the system (single-notification emails, aggregated-notifications emails)"]:::description
+        EmailSenderWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifications from the table 'notifications_to_be_sent' and just sends them. Simple as that. <br> -Can be used for all sending purposes throughout the system (single-notification emails, aggregated-notifications emails)"]:::description
     end
 
     subgraph EmailTemplateAPI
@@ -83,17 +83,17 @@ flowchart TB
     Client2 -->|Integrates with| ExternalAPI
 
     LegacyMonolith -->|Requests| InternalAPI
-    LegacyMonolith -->|Publishes notification| MessageQueueAPI1
+    LegacyMonolith -->|"_daprClient.InvokeMethodAsync<Notification, string>('messagequeueapi', 'publish', notification)"| MessageQueueAPI1
 
-    InternalAPI -->|Publishes notification| MessageQueueAPI1
+    InternalAPI -->|"_daprClient.InvokeMethodAsync<Notification, string>('messagequeueapi', 'publish', notification)"| MessageQueueAPI1
 
     InternalAPI -->|"CRUD custom email templates"| EmailTemplateAPI
 
     InternalAPI -->|"CRUD notification settings"| NotificationSettingsAPI
 
-    ExternalAPI -->|Publishes notification| MessageQueueAPI1
+    ExternalAPI -->|"_daprClient.InvokeMethodAsync<Notification, string>('MessageQueueAPI', 'publish', notification)"| MessageQueueAPI1
 
-    MessageQueueAPI1 -->|Every 10 seconds: Fetches notifications|NotificationOrchestratorWorker
+    MessageQueueAPI1 -->|"_daprClient.InvokeMethodAsync<List<Notification>>('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|NotificationOrchestratorWorker
 
     NotificationOrchestratorWorker -->|"Checks notification settings (Just the frequency setting)"|NotificationSettingsAPI
 
@@ -101,7 +101,7 @@ flowchart TB
 
     NotificationOrchestratorWorker -->|"Publishes notification"|MessageQueueAPI2
 
-    MessageQueueAPI2 -->|"Every 10 seconds: Fetches notifications"|EmailSenderWorker
+    MessageQueueAPI2 -->|"_daprClient.InvokeMethodAsync<List<Notification>>('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|EmailSenderWorker
     
     EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server (external)"]
 ```
