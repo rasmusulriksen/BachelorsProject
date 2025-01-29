@@ -40,17 +40,17 @@ sequenceDiagram
     participant EmailTemplateAPI
 
     NotificationOrchestratorWorker->>MessageQueueAPI: GET api/notifications/new (every 10 seconds)
-    MessageQueueAPI->>NotificationOrchestratorWorker: Returns List<Notification>
+    MessageQueueAPI-->>NotificationOrchestratorWorker: Returns List<Notification>
     loop foreach notification in List<Notification>
         NotificationOrchestratorWorker->>NotificationSettingsAPI: GET api/notificationpreferences/{user}
-        NotificationSettingsAPI-->>NotificationOrchestratorWorker: Returns <NotificationPreferences>
+        NotificationSettingsAPI-->>NotificationOrchestratorWorker: Returns notificationPreferences
         alt SendNotificationNow()
             NotificationOrchestratorWorker->>EmailTemplateAPI: GET api/emailtemplate/{notificationName}
-            EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns EmailTemplate (which format is this?)
+            EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns EmailTemplate (JSON)
             NotificationOrchestratorWorker->>NotificationOrchestratorWorker: PopulateEmailTemplateWithDynamicData()
             NotificationOrchestratorWorker->>MessageQueueAPI: POST api/notify
         else PostponeNotification()
-            NotificationOrchestratorWorker->>NotificationOrchestratorWorker: notification.DueTime = notificationPreferences.BulkReceivalTime
+            NotificationOrchestratorWorker->>NotificationOrchestratorWorker: notification.DueTime = notificationPreferences.BulkReceivalTimePreference
             NotificationOrchestratorWorker->>NotificationOrchestratorWorker: INSERT INTO TABLE postponed_notifications(notification)
         end 
     end
@@ -85,10 +85,10 @@ sequenceDiagram
 
     NotificationOrchestratorWorker->>NotificationOrchestratorWorker: SELECT * FROM postponed_messages WHERE due_time IS NOW (at 08:00, 12:00, 16:00)
     NotificationOrchestratorWorker->>EmailTemplateAPI: GET api/emailtemplate/summary
-    EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns SummaryEmailTemplate (which format is this?)
+    EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns SummaryEmailTemplate (JSON)
     NotificationOrchestratorWorker->>NotificationOrchestratorWorker: List<User> users = FindAllUsersInPostponedNotifications()
     loop foreach user in users
-        NotificationOrchestratorWorker->>NotificationOrchestratorWorker: MergeAllNotificationsIntoOneEmail()
+        NotificationOrchestratorWorker->>NotificationOrchestratorWorker: MergeAllNotificationsIntoOneEmailSummary()
         NotificationOrchestratorWorker->>NotificationOrchestratorWorker: PopulateEmailTemplateWithDynamicData()
         NotificationOrchestratorWorker->>MessageQueueAPI: POST api/notify
     end
