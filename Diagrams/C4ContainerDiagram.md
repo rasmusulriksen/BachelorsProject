@@ -53,7 +53,7 @@ flowchart TB
 
     
     subgraph NotificationOrchestratorWorker
-        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifcations from the bale 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent"]:::description
+        NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifcations from the table 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent <br>- Owns a key-vale table that maps notification names to templateIds"]:::description
         NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB"}
     end
 
@@ -83,25 +83,27 @@ flowchart TB
     Client2 -->|Integrates with| ExternalAPI
 
     LegacyMonolith -->|Requests| InternalAPI
-    LegacyMonolith -->|"_daprClient.InvokeMethodAsync<Notification, string>('messagequeueapi', 'publish', notification)"| MessageQueueAPI1
+    LegacyMonolith -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_orchestrated', notification)"| MessageQueueAPI1
 
-    InternalAPI -->|"_daprClient.InvokeMethodAsync<Notification, string>('messagequeueapi', 'publish', notification)"| MessageQueueAPI1
+    InternalAPI -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_orchestrated', notification)"| MessageQueueAPI1
 
-    InternalAPI -->|"CRUD custom email templates"| EmailTemplateAPI
+    InternalAPI -->|"_daprClient.InvokeMethodAsync('EmailTemplateAPI', 'template/{templateId}' ) <br> (CRUD custom email templates)"| EmailTemplateAPI
 
-    InternalAPI -->|"CRUD notification settings"| NotificationSettingsAPI
+    InternalAPI -->|"_daprClient.InvokeMethodAsync('NotificationSettingsAPI', 'preferences') <br> (CRUD notification settings)"| NotificationSettingsAPI
 
-    ExternalAPI -->|"_daprClient.InvokeMethodAsync<Notification, string>('MessageQueueAPI', 'publish', notification)"| MessageQueueAPI1
+    ExternalAPI -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_orchestrated', notification)"| MessageQueueAPI1
 
-    MessageQueueAPI1 -->|"_daprClient.InvokeMethodAsync<List<Notification>>('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|NotificationOrchestratorWorker
+    MessageQueueAPI1 -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|NotificationOrchestratorWorker
 
-    NotificationOrchestratorWorker -->|"Checks notification settings (Just the frequency setting)"|NotificationSettingsAPI
+    NotificationOrchestratorWorker -->|"_daprClient.InvokeMethodAsync('NotificationSettingsAPI', 'preferences/{userId}') <br> (Checks user's preferences)"|NotificationSettingsAPI
 
-    NotificationOrchestratorWorker -->|"Fetches template (cached locally with 10 min TTL)"|EmailTemplateAPI
+    NotificationOrchestratorWorker -->|"_daprClient.InvokeMethodAsync('EmailTemplateAPI', 'template/{templateId}') <br>Fetches template (cached locally with 10 min TTL)"|EmailTemplateAPI
 
-    NotificationOrchestratorWorker -->|"Publishes notification"|MessageQueueAPI2
+    NotificationOrchestratorWorker -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_sent', notification)"|MessageQueueAPI2
 
-    MessageQueueAPI2 -->|"_daprClient.InvokeMethodAsync<List<Notification>>('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|EmailSenderWorker
+    MessageQueueAPI2 -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|EmailSenderWorker
     
     EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server (external)"]
+
+    click EmailSenderWorkerDescription href "https://github.com/rasmusulriksen/EmailService/blob/master/Diagrams/ClassDiagram.md"
 ```
