@@ -1,5 +1,7 @@
-```mermaid
+# ER Diagrams
 
+## EmailTemplateDB
+```mermaid
 erDiagram
 
     EmailTemplates {
@@ -29,4 +31,63 @@ erDiagram
 
     EmailTemplates ||--o{ EmailTemplateMetadata: "has"
     EmailTemplates ||--o{ EmailTemplatePlaceholders: "has"
+```
+
+## NotificationOrchestratorWorkerDB
+```mermaid
+erDiagram
+
+    NotificationsToOrchestrate {
+        string notificationId PK
+        string userId
+        string templateId
+        string documentRef
+        boolean isInstant
+        dateTime queuedAt
+        map templateParams
+    }
+
+    NotificationsToSend {
+        string notificationId PK
+        string userId FK
+        dateTime scheduledSendTime
+    }
+    
+    NotificationsToOrchestrate ||--o{ NotificationsToSend: "summarizes"
+```
+
+## MessageQueueDB
+```mermaid
+erDiagram
+
+    Messages {
+        string messageId PK
+        string queueName
+        text payload
+        enum status
+        dateTime createdAt
+        dateTime updatedAt
+        integer retryCount
+    }
+
+    MessageStatusLog {
+        string logId PK
+        string messageId FK
+        enum status
+        dateTime updatedAt
+        text message
+    }
+
+    Messages ||--o{ MessageStatusLog: "logs"
+```
+
+## NotificationSettingsDB
+```mermaid
+erDiagram
+
+    UserPreferences {
+        string userId PK
+        string notificationType
+        string frequency
+    }
 ```
