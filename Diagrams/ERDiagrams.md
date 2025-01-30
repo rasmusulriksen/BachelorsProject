@@ -2,21 +2,9 @@
 
 erDiagram
 
-    Users {
-        string userId PK
-        string email
-        string name
-    }
-
-    Tenants {
-        string tenantId PK
-        string name
-        string domain
-    }
-
     EmailTemplates {
         string templateId PK
-        string tenantId FK
+        string tenantId
         string name
         string subject
         text bodyHtml
@@ -39,9 +27,6 @@ erDiagram
         string placeholderDataType
     }
 
-    Tenants ||--o{ Users: "has"
-    Tenants ||--o{ EmailTemplates: "can have"
     EmailTemplates ||--o{ EmailTemplateMetadata: "has"
     EmailTemplates ||--o{ EmailTemplatePlaceholders: "has"
-    EmailTemplates ||..|| Tenants: "belongs to"
 ```

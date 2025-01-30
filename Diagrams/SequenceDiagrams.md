@@ -20,9 +20,11 @@ sequenceDiagram
     TenantAPI-->>Gateway: Returns TenantInfo
     Gateway->>LegacyMonolith: POST api/upload
     LegacyMonolith->>LegacyMonolith: Upload document to case
-    LegacyMonolith->>MessageQueueAPI: POST api/notify
-    MessageQueueAPI->>MessageQueueAPI: INSERT INTO TABLE new_notifications
-    MessageQueueAPI-->>LegacyMonolith: Returns 200 OK
+    LegacyMonolith->>LegacyMonolith: usersToNotify = documentNotificationService.getUsersFromNotifyField(docRef)
+    loop foreach user in usersToNotify
+        LegacyMonolith->>MessageQueueAPI: POST api/publish?queueName=notifications_to_be_orchestrated
+        MessageQueueAPI-->>LegacyMonolith: Returns 200 OK
+    end
     LegacyMonolith-->>Gateway: Returns 200 OK
     Gateway-->>Frontend: Returns 200 OK
     Frontend-->>Client1: Displays success message
@@ -48,9 +50,9 @@ sequenceDiagram
             NotificationOrchestratorWorker->>EmailTemplateAPI: GET api/emailtemplate/{notificationName}
             EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns EmailTemplate (JSON)
             NotificationOrchestratorWorker->>NotificationOrchestratorWorker: PopulateEmailTemplateWithDynamicData()
-            NotificationOrchestratorWorker->>MessageQueueAPI: POST api/notify
+            NotificationOrchestratorWorker->>MessageQueueAPI: publish?queueName=notifications_to_be_sent
         else PostponeNotification()
-            NotificationOrchestratorWorker->>NotificationOrchestratorWorker: notification.DueTime = notificationPreferences.BulkReceivalTimePreference
+            NotificationOrchestratorWorker->>NotificationOrchestratorWorker: notification.DueTime = notificationPreferences.WhenToReceiveNotifications
             NotificationOrchestratorWorker->>NotificationOrchestratorWorker: INSERT INTO TABLE postponed_notifications(notification)
         end 
     end
@@ -73,26 +75,32 @@ sequenceDiagram
 
 <br><br><br><br><br><br><br><br>
 
-## SequenceDiagram4: The postponed notifications are fetched, batched into 1-email-per-user, published to MessageQueueAPI and sent via EmailSenderWorker to the SMTP-server (happens 08:00, 12:00 and 16:00)
+## SequenceDiagram4: Users receive in-app and email notifications at 08:00, 12:00 and 16:00
 
 ```mermaid
 sequenceDiagram
     participant NotificationOrchestratorWorker
     participant EmailTemplateAPI
     participant MessageQueueAPI
+    participant LegacyMonolith
     participant EmailSenderWorker
     participant SMTPServer
 
-    NotificationOrchestratorWorker->>NotificationOrchestratorWorker: SELECT * FROM postponed_messages WHERE due_time IS NOW (at 08:00, 12:00, 16:00)
-    NotificationOrchestratorWorker->>EmailTemplateAPI: GET api/emailtemplate/summary
-    EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns SummaryEmailTemplate (JSON)
+    NotificationOrchestratorWorker->>NotificationOrchestratorWorker: List<Notification> notifications = SELECT * FROM postponed_messages WHERE due_time IS NOW (at 08:00, 12:00, 16:00)
+    NotificationOrchestratorWorker->>LegacyMonolith: POST api/openesdh/activities <br> Request body: List<Notification>
+    loop foreach activity in activities
+        LegacyMonolith->>LegacyMonolith: oeActivityService.postActivity(activity)
+    end
+    LegacyMonolith-->>NotificationOrchestratorWorker: Returns 200 OK
+    NotificationOrchestratorWorker->>EmailTemplateAPI: GET api/emailtemplate/notificationssummary
+    EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns notifications summary email template (JSON)
     NotificationOrchestratorWorker->>NotificationOrchestratorWorker: List<User> users = FindAllUsersInPostponedNotifications()
     loop foreach user in users
-        NotificationOrchestratorWorker->>NotificationOrchestratorWorker: MergeAllNotificationsIntoOneEmailSummary()
+        NotificationOrchestratorWorker->>NotificationOrchestratorWorker: MergeAllNotificationsForUserIntoOneEmailSummary()
         NotificationOrchestratorWorker->>NotificationOrchestratorWorker: PopulateEmailTemplateWithDynamicData()
-        NotificationOrchestratorWorker->>MessageQueueAPI: POST api/notify
+        NotificationOrchestratorWorker->>MessageQueueAPI: POST api/publish?queueName=notifications_to_be_sent
     end
-    EmailSenderWorker->>MessageQueueAPI: GET api/notifications/ready (every 10 seconds)
+    EmailSenderWorker->>MessageQueueAPI: GET api/dequeue?queueName=notifications_to_be_sent (every 10 seconds)
     MessageQueueAPI-->>EmailSenderWorker: Returns List<Notification>
     EmailSenderWorker->>SMTPServer: Connects to SMTP-server and sends the email
 ```

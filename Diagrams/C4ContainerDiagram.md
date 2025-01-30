@@ -43,18 +43,18 @@ flowchart TB
 
     subgraph MessageQueueAPI1
         MessageQueueAPI1Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability) <br>- table: notifications_to_be_orchestrated"]:::description
-        MessageQueueDB1@{ shape: cyl, label: "MessageQueueDB1 \n -PostgreSQL"}
+        MessageQueueDB1@{ shape: cyl, label: "MessageQueueDB1 \n -PostgreSQL \n -Shared table"}
     end
 
     subgraph MessageQueueAPI2
         MessageQueueAPI2Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability) <br>- table: notifications_to_be_sent"]:::description
-        MessageQueueDB2@{ shape: cyl, label: "MessageQueueDB2 \n -PostgreSQL"}
+        MessageQueueDB2@{ shape: cyl, label: "MessageQueueDB2 \n -PostgreSQL \n -Shared table"}
     end
 
     
     subgraph NotificationOrchestratorWorker
         NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifcations from the table 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent <br>- Owns a key-vale table that maps notification names to templateIds"]:::description
-        NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB"}
+        NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB \n -PostgreSQL \n -Shared table"}
     end
 
     subgraph EmailSenderWorker
@@ -63,12 +63,13 @@ flowchart TB
 
     subgraph EmailTemplateAPI
         EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates"]:::description
-        EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB" }
+        EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB \n -PostgreSQL \n -Shared table " }
+        click EmailTemplateDB href "https://github.com/rasmusulriksen/EmailService/blob/master/Diagrams/ERDiagramEmailTemplateDB.md"
     end
 
     subgraph NotificationSettingsAPI
         NotificationSettingsAPIDescription["<br>- C# API <br>- Each tenant can configure very specific notification settings which are stored here. In this first iteration it will only be frequency (Immediate, 8am, 12 am, 4pm)"]:::description
-        NotificationSettingsDB@{ shape: cyl, label: "NotificationSettingsDB" }
+        NotificationSettingsDB@{ shape: cyl, label: "NotificationSettingsDB \n -PostgreSQL \n -Shared table" }
     end
     
     %% Relationships
@@ -105,5 +106,4 @@ flowchart TB
     
     EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server (external)"]
 
-    click EmailSenderWorkerDescription href "https://github.com/rasmusulriksen/EmailService/blob/master/Diagrams/ClassDiagram.md"
 ```
