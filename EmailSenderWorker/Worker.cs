@@ -8,7 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Dapr.Client;
 
-namespace EmailService;
+namespace EmailSenderWorker;
 
 public class Worker : BackgroundService
 {
@@ -53,7 +53,7 @@ public class Worker : BackgroundService
                 message.From = new MailAddress(senderEmail, senderName);
                 message.To.Add(new MailAddress(recipientEmail));
                 message.Subject = "Test Email";
-                message.Body = "This is a test email sent from EmailService using smtp4dev.";
+                message.Body = "This is a test email sent from EmailSenderWorker using smtp4dev.";
 
                 using (var client = new SmtpClient(smtpServer, smtpPort))
                 {
