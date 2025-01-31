@@ -5,28 +5,28 @@
 erDiagram
 
     EmailTemplates {
-        string templateId PK
-        string tenantId
-        string name
-        string subject
-        text bodyHtml
-        text bodyText
-        dateTime createdDate
-        dateTime modifiedDate
+        UUID templateId PK
+        UUID tenantId
+        VARCHAR(255) name
+        VARCHAR(255) subject
+        TEXT bodyHtml
+        TEXT bodyText
+        TIMESTAMPTZ createdDate
+        TIMESTAMPTZ modifiedDate
     }
 
     EmailTemplateMetadata {
-        string metadataId PK
-        string templateId FK
-        string key
-        string value
+        UUID metadataId PK
+        UUID templateId FK
+        VARCHAR(255) key
+        TEXT value
     }
 
     EmailTemplatePlaceholders {
-        string placeholderId PK
-        string templateId FK
-        string placeholderName
-        string placeholderDataType
+        UUID placeholderId PK
+        UUID templateId FK
+        VARCHAR(255) placeholderName
+        VARCHAR(50) placeholderDataType
     }
 
     EmailTemplates ||--o{ EmailTemplateMetadata: "has"
@@ -38,21 +38,21 @@ erDiagram
 erDiagram
 
     NotificationsToOrchestrate {
-        string notificationId PK
-        string userId
-        string templateId
-        string documentRef
-        boolean isInstant
-        dateTime queuedAt
-        map templateParams
+        UUID notificationId PK
+        UUID userId
+        UUID templateId FK
+        UUID documentRef
+        BOOLEAN isInstant
+        TIMESTAMPTZ queuedAt
+        JSONB templateParams
     }
 
     NotificationsToSend {
-        string notificationId PK
-        string userId FK
-        dateTime scheduledSendTime
+        UUID notificationId PK
+        UUID userId FK
+        TIMESTAMPTZ scheduledSendTime
     }
-    
+
     NotificationsToOrchestrate ||--o{ NotificationsToSend: "summarizes"
 ```
 
@@ -61,21 +61,21 @@ erDiagram
 erDiagram
 
     Messages {
-        string messageId PK
-        string queueName
-        text payload
-        enum status
-        dateTime createdAt
-        dateTime updatedAt
-        integer retryCount
+        UUID messageId PK
+        VARCHAR(255) queueName
+        JSONB payload
+        VARCHAR(50) status
+        TIMESTAMPTZ createdAt
+        TIMESTAMPTZ updatedAt
+        INTEGER retryCount
     }
 
     MessageStatusLog {
-        string logId PK
-        string messageId FK
-        enum status
-        dateTime updatedAt
-        text message
+        UUID logId PK
+        UUID messageId FK
+        VARCHAR(50) status
+        TIMESTAMPTZ updatedAt
+        TEXT message
     }
 
     Messages ||--o{ MessageStatusLog: "logs"
@@ -86,8 +86,8 @@ erDiagram
 erDiagram
 
     UserPreferences {
-        string userId PK
-        string notificationType
-        string frequency
+        UUID userId PK
+        VARCHAR(100) notificationType PK
+        VARCHAR(50) frequency
     }
 ```
