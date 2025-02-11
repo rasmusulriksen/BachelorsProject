@@ -1,0 +1,43 @@
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("api/[controller]")]
+public class EmailTemplatesController : ControllerBase
+{
+    private readonly IEmailTemplateService _service;
+
+    public EmailTemplatesController(IEmailTemplateService service)
+    {
+        _service = service;
+    }
+
+    [HttpGet]
+    public ActionResult<IEnumerable<EmailTemplate>> GetAll()
+    {
+        return Ok(_service.GetAllTemplates());
+    }
+
+    [HttpGet("{id}")]
+    public ActionResult<EmailTemplate> GetById(int id)
+    {
+        var template = _service.GetTemplateById(id);
+        if (template == null)
+            return NotFound();
+        
+        return Ok(template);
+    }
+
+    [HttpPost]
+    public IActionResult Create(EmailTemplate template)
+    {
+        _service.CreateTemplate(template);
+        return CreatedAtAction(nameof(GetById), new { id = template.Id }, template);
+    }
+
+    // Create an endpoint called PopulateEmailTemplate that returns a ready-to-send email
+    [HttpPost("PopulateEmailTemplate")]
+    public IActionResult PopulateEmailTemplate(EmailTemplate template)
+    {
+        
+    }
+}

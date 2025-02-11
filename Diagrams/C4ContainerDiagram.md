@@ -57,7 +57,7 @@ flowchart TB
 
 
         subgraph NotificationOrchestratorWorker
-            NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifcations from the table 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() dynamically populates the email template with FluentEmail and publishes the notification to the message queue <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent <br>- Owns a key-vale table that maps notification names to templateIds"]:::description
+            NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifications from the table 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() Asks EmailTemplateAPI for a ready-to-send email and publishes the notification to the message queue <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent <br>- Owns a key-vale table that maps notification names to templateIds"]:::description
             NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB \n -PostgreSQL \n -Shared table"}
         end
 
@@ -66,7 +66,7 @@ flowchart TB
         end
 
         subgraph EmailTemplateAPI
-            EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates <br> \- Lets users preview what the final email will look like"]:::description
+            EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates <br> \- Lets users preview what the final email will look like <br> \- Fills out template with dynamic data (Handlebars.Net) and returns an email that is ready to be sent"]:::description
             EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB \n -PostgreSQL \n -Shared table " }
             click EmailTemplateDB href "https://github.com/rasmusulriksen/BachelorsProject/blob/master/Diagrams/ERDiagramEmailTemplateDB.md"
         end

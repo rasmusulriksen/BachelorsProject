@@ -46,12 +46,12 @@ sequenceDiagram
     loop foreach notification in List<Notification>
         NotificationOrchestratorWorker->>NotificationSettingsAPI: GET api/notificationpreferences/{user}
         NotificationSettingsAPI-->>NotificationOrchestratorWorker: Returns notificationPreferences
-        alt SendNotificationNow()
-            NotificationOrchestratorWorker->>EmailTemplateAPI: GET api/emailtemplate/{notificationName}
-            EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns EmailTemplate (JSON)
-            NotificationOrchestratorWorker->>NotificationOrchestratorWorker: PopulateEmailTemplateWithDynamicData()
+        NotificationOrchestratorWorker->>NotificationOrchestratorWorker: SendNowOrPostpone()
+        alt SendNow()
+            NotificationOrchestratorWorker->>EmailTemplateAPI: POST api/PopulateEmailTemplate/{notificationName} <br> Body: DynamicEmailFieldsDTO
+            EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns IActionResult<EmailTemplateReadyToSend> (JSON/string with html content)
             NotificationOrchestratorWorker->>MessageQueueAPI: publish?queueName=notifications_to_be_sent
-        else PostponeNotification()
+        else Postpone()
             NotificationOrchestratorWorker->>NotificationOrchestratorWorker: notification.DueTime = notificationPreferences.WhenToReceiveNotifications
             NotificationOrchestratorWorker->>NotificationOrchestratorWorker: INSERT INTO TABLE postponed_notifications(notification)
         end 
