@@ -60,25 +60,36 @@ erDiagram
 ```mermaid
 erDiagram
 
-    Messages {
-        UUID messageId PK
-        VARCHAR(255) queueName
-        JSONB payload
-        VARCHAR(50) status
+    NotificationsToBeOrchestrated {
+        UUID notificationId PK
+        UUID userId
+        UUID templateId
+        JSONB templateParams
         TIMESTAMPTZ createdAt
-        TIMESTAMPTZ updatedAt
-        INTEGER retryCount
+        TEXT status      // Status of the message, e.g., 'NEW', 'PROCESSED'
     }
 
-    MessageStatusLog {
-        UUID logId PK
-        UUID messageId FK
-        VARCHAR(50) status
-        TIMESTAMPTZ updatedAt
-        TEXT message
+    NotificationsToBeSent {
+        UUID notificationId PK
+        UUID userId
+        UUID templateId
+        JSONB templateParams
+        TIMESTAMPTZ scheduledSendTime
+        TIMESTAMPTZ createdAt
     }
 
-    Messages ||--o{ MessageStatusLog: "logs"
+    NotificationsPostponed {
+        UUID notificationId PK
+        UUID userId
+        UUID templateId
+        JSONB templateParams
+        TIMESTAMPTZ postponementPeriod
+        TEXT aggregatedDetails  // Potentially hold info about summaries
+        TIMESTAMPTZ createdAt
+    }
+
+    NotificationsToBeOrchestrated ||--o{ NotificationsToBeSent: "triggers"    
+    NotificationsToBeOrchestrated ||--o{ NotificationsPostponed: "results in"
 ```
 
 ## NotificationSettingsDB

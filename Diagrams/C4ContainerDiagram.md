@@ -62,7 +62,7 @@ flowchart TB
     end
 
     subgraph EmailTemplateAPI
-        EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates"]:::description
+        EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates <br> \- Lets users preview what the final email will look like"]:::description
         EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB \n -PostgreSQL \n -Shared table " }
         click EmailTemplateDB href "https://github.com/rasmusulriksen/BachelorsProject/blob/master/Diagrams/ERDiagramEmailTemplateDB.md"
     end
