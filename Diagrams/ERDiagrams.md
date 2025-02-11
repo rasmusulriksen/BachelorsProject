@@ -1,95 +1,88 @@
 # ER Diagrams
 
 ## EmailTemplateDB
+- Schema per tenant
+- The current implementation of custom email templates has several properties that I don't fully understand:
+    - category, language, active
 ```mermaid
 erDiagram
 
-    EmailTemplates {
+    system_email_templates {
         UUID templateId PK
-        UUID tenantId
+
+    }
+
+    custom_email_templates {
+        UUID templateId PK
         VARCHAR(255) name
         VARCHAR(255) subject
         TEXT bodyHtml
         TEXT bodyText
         TIMESTAMPTZ createdDate
         TIMESTAMPTZ modifiedDate
+        TEXT lastModifiedBy
     }
 
-    EmailTemplateMetadata {
+    email_templates_metadata {
         UUID metadataId PK
         UUID templateId FK
         VARCHAR(255) key
         TEXT value
     }
 
-    EmailTemplatePlaceholders {
+    email_templates_placeholders {
         UUID placeholderId PK
         UUID templateId FK
         VARCHAR(255) placeholderName
         VARCHAR(50) placeholderDataType
     }
 
-    EmailTemplates ||--o{ EmailTemplateMetadata: "has"
-    EmailTemplates ||--o{ EmailTemplatePlaceholders: "has"
+    custom_email_templates ||--o{ email_templates_metadata: "has"
+    custom_email_templates ||--o{ email_templates_placeholders: "has"
 ```
 
 ## NotificationOrchestratorWorkerDB
+- Every email stored in this table will be sent as part of a batch job, where the user will receive an aggregated notification summary (i.e. every weekday at 08:00 AM).
+- We don't need to store a templateId, because the same template will be used for these emails always.
+
 ```mermaid
 erDiagram
 
-    NotificationsToOrchestrate {
-        UUID notificationId PK
+    postponed_notifications {
+        UUID notificationId
         UUID userId
-        UUID templateId FK
-        UUID documentRef
-        BOOLEAN isInstant
-        TIMESTAMPTZ queuedAt
-        JSONB templateParams
-    }
-
-    NotificationsToSend {
-        UUID notificationId PK
-        UUID userId FK
+        TEXT actionName
+        JSONB inputParameters
         TIMESTAMPTZ scheduledSendTime
     }
-
-    NotificationsToOrchestrate ||--o{ NotificationsToSend: "summarizes"
 ```
 
 ## MessageQueueDB
 ```mermaid
 erDiagram
 
-    NotificationsToBeOrchestrated {
+    notifications_to_be_orchestrated {
         UUID notificationId PK
-        UUID userId
-        UUID templateId
-        JSONB templateParams
-        TIMESTAMPTZ createdAt
-        TEXT status      // Status of the message, e.g., 'NEW', 'PROCESSED'
+        VARCHAR(255) recipientEmail
+        TEXT message
     }
 
-    NotificationsToBeSent {
+    notifications_to_be_sent {
         UUID notificationId PK
-        UUID userId
-        UUID templateId
-        JSONB templateParams
-        TIMESTAMPTZ scheduledSendTime
-        TIMESTAMPTZ createdAt
+        VARCHAR(255) recipientEmail
+        TEXT message
     }
 
-    NotificationsPostponed {
+    notifications_postponed {
         UUID notificationId PK
-        UUID userId
-        UUID templateId
-        JSONB templateParams
-        TIMESTAMPTZ postponementPeriod
-        TEXT aggregatedDetails  // Potentially hold info about summaries
-        TIMESTAMPTZ createdAt
+        VARCHAR(255) recipientEmail
+        TEXT message
+        TIMESTAMPTZ was_postponed_at
+        TIMESTAMPTZ will_be_sent_at
     }
 
-    NotificationsToBeOrchestrated ||--o{ NotificationsToBeSent: "triggers"    
-    NotificationsToBeOrchestrated ||--o{ NotificationsPostponed: "results in"
+    notifications_to_be_orchestrated ||--o{ notifications_to_be_sent: "can be labeled as"    
+    notifications_to_be_orchestrated ||--o{ notifications_postponed: "can be labeled as"
 ```
 
 ## NotificationSettingsDB
