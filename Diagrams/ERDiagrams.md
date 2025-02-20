@@ -9,7 +9,7 @@ erDiagram
 
     system_email_templates {
         UUID templateId PK
-
+        
     }
 
     custom_email_templates {

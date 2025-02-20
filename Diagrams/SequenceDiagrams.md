@@ -48,7 +48,7 @@ sequenceDiagram
         NotificationSettingsAPI-->>NotificationOrchestratorWorker: Returns notificationPreferences
         NotificationOrchestratorWorker->>NotificationOrchestratorWorker: SendNowOrPostpone()
         alt SendNow()
-            NotificationOrchestratorWorker->>EmailTemplateAPI: POST api/PopulateEmailTemplate/{notificationName} <br> Body: DynamicEmailFieldsDTO
+            NotificationOrchestratorWorker->>EmailTemplateAPI: POST api/PopulateEmailTemplate <br> Body: PopulateEmailTemplateDTO
             EmailTemplateAPI-->>NotificationOrchestratorWorker: Returns IActionResult<EmailTemplateReadyToSend> (JSON/string with html content)
             NotificationOrchestratorWorker->>MessageQueueAPI: publish?queueName=notifications_to_be_sent
         else Postpone()

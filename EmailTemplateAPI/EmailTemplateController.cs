@@ -36,8 +36,9 @@ public class EmailTemplatesController : ControllerBase
 
     // Create an endpoint called PopulateEmailTemplate that returns a ready-to-send email
     [HttpPost("PopulateEmailTemplate")]
-    public IActionResult PopulateEmailTemplate(EmailTemplate template)
+    public IActionResult PopulateEmailTemplate(PopulateEmailTemplateDTO dto)
     {
-        
+        var emailTemplate = _service.PopulateSystemEmail(dto);
+        return Ok(emailTemplate);
     }
 }

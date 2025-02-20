@@ -45,20 +45,9 @@ flowchart TB
 
     subgraph NotificationService
 
-        subgraph MessageQueueAPI1
-            MessageQueueAPI1Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability) <br>- table: notifications_to_be_orchestrated"]:::description
-            MessageQueueDB1@{ shape: cyl, label: "MessageQueueDB1 \n -PostgreSQL \n -Shared table"}
-        end
-
-        subgraph MessageQueueAPI2
-            MessageQueueAPI2Description["<br>- C# API <br>-Abstracts PostgreSQL interaction to reduce coupling <br>-This is a logical representation of the only message queue in the system (for readability) <br>- table: notifications_to_be_sent"]:::description
-            MessageQueueDB2@{ shape: cyl, label: "MessageQueueDB2 \n -PostgreSQL \n -Shared table"}
-        end
-
-
-        subgraph NotificationOrchestratorWorker
-            NotificationOrchestratorWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifications from the table 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() Asks EmailTemplateAPI for a ready-to-send email and publishes the notification to the message queue <br>- PostponeNotification() saves the notification to NotificationOrchestratorWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database and merges them into one summarized notification per user and queues them to be sent <br>- Owns a key-vale table that maps notification names to templateIds"]:::description
-            NotificationOrchestratorWorkerDB@{ shape: cyl, label: "NotificationOrchestratorWorkerDB \n -PostgreSQL \n -Shared table"}
+        subgraph NotificationSchedulerWorker
+            NotificationSchedulerWorkerDescription["<br>- C# ServiceWorker <br>- Runs every 10 seconds <br>- Dequeues notifications from the table 'notifications_to_be_orchestrated' <br>- Looks up the recipient user's notification preferences and decides to either send or postpone <br>- SendNotificationNow() publishes the event InstantNotificationScheduled <br>- PostponeNotification() saves the notification to NotificationSchedulerWorkerDB <br> - At 08:00, 12:00 and 16:00 it selects all notifications from the database, groups by recipient, foreach recipient publishes the event SummaryNotificationScheduled <br>- Events include an identifier that the subscriber will use to find the right email template"]:::description
+            NotificationSchedulerWorkerDB@{ shape: cyl, label: "NotificationSchedulerWorkerDB \n -PostgreSQL \n -Shared table"}
         end
 
         subgraph EmailSenderWorker
@@ -66,9 +55,17 @@ flowchart TB
         end
 
         subgraph EmailTemplateAPI
-            EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates <br> \- Lets users preview what the final email will look like <br> \- Fills out template with dynamic data (Handlebars.Net) and returns an email that is ready to be sent"]:::description
+            EmailTemplateAPIDescription["\- C# API <br> \- Lets users CRUD their own custom email templates <br> \- Lets users preview what the final email will look like <br>"]:::description
             EmailTemplateDB@{ shape: cyl, label: "EmailTemplateDB \n -PostgreSQL \n -Shared table " }
             click EmailTemplateDB href "https://github.com/rasmusulriksen/BachelorsProject/blob/master/Diagrams/ERDiagramEmailTemplateDB.md"
+        end
+
+        subgraph EmailTemplatePopulatorWorker
+            EmailTemplatePopulatorDescription["\- ServiceWorker <br> \- Fills out template with dynamic data (Handlebars.Net) and publishes the event EmailTemplatePopulated"]:::description
+        end
+
+        subgraph InAppNotificationSenderWorker
+            InAppNotificationSenderWorkerDescription["\- ServiceWorker <br> \- Sends in app notifications to NotificationAPI"]:::description
         end
 
         subgraph NotificationSettingsAPI
@@ -89,26 +86,25 @@ flowchart TB
     Client2 -->|Integrates with| ExternalAPI
 
     LegacyMonolith -->|Requests| InternalAPI
-    LegacyMonolith -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_orchestrated', notification)"| MessageQueueAPI1
+    LegacyMonolith -->|"_messageQueue.publish('NotificationCreated')"| NotificationSchedulerWorker
 
-    InternalAPI -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_orchestrated', notification)"| MessageQueueAPI1
+    InternalAPI -->|"_messageQueue.publish('NotificationCreated')"| NotificationSchedulerWorker
 
     InternalAPI -->|"_daprClient.InvokeMethodAsync('EmailTemplateAPI', 'template/{templateId}' ) <br> (CRUD custom email templates)"| EmailTemplateAPI
 
     InternalAPI -->|"_daprClient.InvokeMethodAsync('NotificationSettingsAPI', 'preferences') <br> (CRUD notification settings)"| NotificationSettingsAPI
 
-    ExternalAPI -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_orchestrated', notification)"| MessageQueueAPI1
+    ExternalAPI -->|"_messageQueue.publish('NotificationCreated')"| NotificationSchedulerWorker
 
-    MessageQueueAPI1 -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|NotificationOrchestratorWorker
+    NotificationSchedulerWorker -->|"_daprClient.InvokeMethodAsync('NotificationSettingsAPI', 'preferences/{userId}') <br> (Checks user's preferences)"|NotificationSettingsAPI
 
-    NotificationOrchestratorWorker -->|"_daprClient.InvokeMethodAsync('NotificationSettingsAPI', 'preferences/{userId}') <br> (Checks user's preferences)"|NotificationSettingsAPI
+    NotificationSchedulerWorker -->|"_messageQueue.publish('InstantNotificationScheduled')"|EmailTemplatePopulatorWorker
+    NotificationSchedulerWorker -->|"_messageQueue.publish('SummaryNotificationScheduled')"|EmailTemplatePopulatorWorker
 
-    NotificationOrchestratorWorker -->|"_daprClient.InvokeMethodAsync('EmailTemplateAPI', 'template/{templateId}') <br>Fetches template (cached locally with 10 min TTL)"|EmailTemplateAPI
+    NotificationSchedulerWorker -->|"_messageQueue.publish('SummaryNotificationScheduled')"|InAppNotificationSenderWorker
 
-    NotificationOrchestratorWorker -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'publish?queueName=notifications_to_be_sent', notification)"|MessageQueueAPI2
+    EmailTemplatePopulatorWorker -->|"_messageQueue.publish('EmailTemplatePopulated')"|EmailSenderWorker
 
-    MessageQueueAPI2 -->|"_daprClient.InvokeMethodAsync('MessageQueueAPI', 'dequeue?queueName=notifications_to_be_orchestrated')"|EmailSenderWorker
-
-    EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server (external)"]
+    EmailSenderWorker -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server, external (heysender.com)"]
 
 ```
