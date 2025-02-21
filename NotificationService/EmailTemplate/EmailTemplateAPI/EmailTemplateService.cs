@@ -1,3 +1,5 @@
+using Dapr.Client;
+
 public interface IEmailTemplateService
 {
     IEnumerable<EmailTemplate> GetAllTemplates();
@@ -5,6 +7,8 @@ public interface IEmailTemplateService
     void CreateTemplate(EmailTemplate template);
 
     EmailReadyToSend PopulateSystemEmail(PopulateEmailTemplateDTO dto);
+
+    void PublishTestEmailToDaprQueue(EmailReadyToSend email);
 }
 
 public class EmailTemplateService : IEmailTemplateService
@@ -38,5 +42,11 @@ public class EmailTemplateService : IEmailTemplateService
             "Test Email",
             emailTemplate
         );
+    }
+
+    public void PublishTestEmailToDaprQueue(EmailReadyToSend email)
+    {
+        var daprClient = new DaprClientBuilder().Build();
+        daprClient.PublishEventAsync("pubsub", "EmailTemplatePopulated", email);
     }
 }

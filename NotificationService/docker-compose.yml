@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    ports:
+      - '3000:80'
+      - '2525:25'
+    volumes:
+      - smtp4dev-data:/smtp4dev
+    environment:
+      - ServerOptions__HostName=smtp4dev
+
+  email-template-api:
+    build:
+      context: EmailTemplate/EmailTemplateAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5088:80"
+    depends_on:
+      - rabbitmq
+      - smtp4dev
+
+  email-template-api-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "email-template-api",
+     "-app-port", "80",
+     "-components-path", "/components"]
+    volumes:
+      - "./components:/components"
+    depends_on:
+      - email-template-api
+    network_mode: "service:email-template-api"
+
+  email-sender-worker:
+    build:
+      context: EmailSenderWorker
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+      - smtp4dev
+
+  email-sender-worker-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "email-sender-worker",
+     "-app-port", "80",
+     "-components-path", "/components"]
+    volumes:
+      - "./components:/components"
+    depends_on:
+      - email-sender-worker
+      - rabbitmq
+    network_mode: "service:email-sender-worker"
+
+volumes:
+  smtp4dev-data: 

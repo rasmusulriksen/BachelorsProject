@@ -40,4 +40,11 @@ public class EmailTemplatesController : ControllerBase
         var emailTemplate = _service.PopulateSystemEmail(dto);
         return Ok(emailTemplate);
     }
+
+    [HttpPost("PublishTestEmailToDaprQueue")]
+    public IActionResult PublishTestEmailToDaprQueue(EmailReadyToSend email)
+    {
+        _service.PublishTestEmailToDaprQueue(email);
+        return Ok();
+    }
 }
