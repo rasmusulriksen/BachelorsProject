@@ -23,7 +23,7 @@ services:
 
   email-template-api:
     build:
-      context: EmailTemplate/EmailTemplateAPI
+      context: EmailTemplateAPI
       dockerfile: Dockerfile
     ports:
     - "5298:80"  # Map host port 5298 to container port 80 (for Swagger access)
@@ -48,9 +48,9 @@ services:
         condition: service_started
     network_mode: "service:email-template-api"
 
-  email-sender:
+  email-sender-api:
     build:
-      context: EmailSender
+      context: EmailSenderAPI
       dockerfile: Dockerfile
     ports:
       - "5299:80"  # Added port mapping for Swagger access
@@ -60,10 +60,10 @@ services:
       - rabbitmq
       - smtp4dev
 
-  email-sender-dapr:
+  email-sender-api-dapr:
     image: daprio/daprd:latest
     command: ["./daprd",
-     "-app-id", "email-sender",
+     "-app-id", "email-sender-api",
      "-app-port", "80",
      "-components-path", "/components"]
     volumes:
@@ -71,9 +71,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      email-sender:
+      email-sender-api:
         condition: service_started
-    network_mode: "service:email-sender"
+    network_mode: "service:email-sender-api"
 
 volumes:
   smtp4dev-data:  

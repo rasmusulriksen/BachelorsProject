@@ -1,16 +1,16 @@
 using System.Net.Mail;
 using Microsoft.Extensions.Logging;
 
-public interface IEmailSender
+public interface IEmailSenderService
 {
     Task SendEmailAsync(string subject, string body);
 }
 
-public class EmailSender : IEmailSender
+public class EmailSenderService : IEmailSenderService
 {
-    private readonly ILogger<EmailSender> _logger;
+    private readonly ILogger<EmailSenderService> _logger;
 
-    public EmailSender(ILogger<EmailSender> logger)
+    public EmailSenderService(ILogger<EmailSenderService> logger)
     {
         _logger = logger;
     }

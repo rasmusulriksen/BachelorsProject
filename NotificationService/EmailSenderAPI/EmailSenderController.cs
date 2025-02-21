@@ -7,12 +7,12 @@ using Dapr.Client;
 public class EmailSenderController : ControllerBase
 {
     private readonly ILogger<EmailSenderController> _logger;
-    private readonly IEmailSender _emailSender;
+    private readonly IEmailSenderService _emailSenderService;
 
-    public EmailSenderController(ILogger<EmailSenderController> logger, IEmailSender emailSender)
+    public EmailSenderController(ILogger<EmailSenderController> logger, IEmailSenderService emailSenderService)
     {
         _logger = logger;
-        _emailSender = emailSender;
+        _emailSenderService = emailSenderService;
     }
 
     [Topic("pubsub", "EmailTemplatePopulated")]
@@ -22,7 +22,7 @@ public class EmailSenderController : ControllerBase
         try
         {
             _logger.LogInformation("Received email template: {@Email}", email);
-            await _emailSender.SendEmailAsync(email.Subject, email.Body);
+            await _emailSenderService.SendEmailAsync(email.Subject, email.Body);
             return Ok();
         }
         catch (Exception ex)
