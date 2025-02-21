@@ -1,4 +1,5 @@
 using Dapr.Client;
+using Microsoft.Extensions.Logging;
 
 public interface IEmailTemplateService
 {
@@ -14,10 +15,12 @@ public interface IEmailTemplateService
 public class EmailTemplateService : IEmailTemplateService
 {
     private readonly IEmailTemplateRepository _repository;
+    private readonly ILogger<EmailTemplateService> _logger;
 
-    public EmailTemplateService(IEmailTemplateRepository repository)
+    public EmailTemplateService(IEmailTemplateRepository repository, ILogger<EmailTemplateService> logger)
     {
         _repository = repository;
+        _logger = logger;
     }
 
     public IEnumerable<EmailTemplate> GetAllTemplates() => _repository.GetAll();
@@ -44,9 +47,11 @@ public class EmailTemplateService : IEmailTemplateService
         );
     }
 
-    public void PublishTestEmailToDaprQueue(EmailReadyToSend email)
+    public async void PublishTestEmailToDaprQueue(EmailReadyToSend email)
     {
+        _logger.LogInformation("Building Dapr client and publishing email: {@Email}", email);
         var daprClient = new DaprClientBuilder().Build();
-        daprClient.PublishEventAsync("pubsub", "EmailTemplatePopulated", email);
+        await daprClient.PublishEventAsync("pubsub", "EmailTemplatePopulated", email);
+        _logger.LogInformation("Email published successfully");
     }
 }

@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 [ApiController]
 [Route("api/[controller]")]
 public class EmailTemplatesController : ControllerBase
 {
     private readonly IEmailTemplateService _service;
+    private readonly ILogger<EmailTemplatesController> _logger;
 
-    public EmailTemplatesController(IEmailTemplateService service)
+    public EmailTemplatesController(IEmailTemplateService service, ILogger<EmailTemplatesController> logger)
     {
         _service = service;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -44,6 +47,7 @@ public class EmailTemplatesController : ControllerBase
     [HttpPost("PublishTestEmailToDaprQueue")]
     public IActionResult PublishTestEmailToDaprQueue(EmailReadyToSend email)
     {
+        _logger.LogInformation("Publishing email to Dapr queue: {@Email}", email);
         _service.PublishTestEmailToDaprQueue(email);
         return Ok();
     }

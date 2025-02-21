@@ -5,8 +5,13 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 2s
+      timeout: 30s
+      retries: 10
 
-  smtp4dev:
+  smtp4dev: # Email testing tool  
     image: rnwood/smtp4dev:v3
     ports:
       - '3000:80'
@@ -21,7 +26,9 @@ services:
       context: EmailTemplate/EmailTemplateAPI
       dockerfile: Dockerfile
     ports:
-      - "5088:80"
+    - "5298:80"  # Map host port 5298 to container port 80 (for Swagger access)
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
       - rabbitmq
       - smtp4dev
@@ -31,33 +38,42 @@ services:
     command: ["./daprd",
      "-app-id", "email-template-api",
      "-app-port", "80",
-     "-components-path", "/components"]
+     "-components-path", "/components"] 
     volumes:
       - "./components:/components"
     depends_on:
-      - email-template-api
+      rabbitmq:
+        condition: service_healthy
+      email-template-api:
+        condition: service_started
     network_mode: "service:email-template-api"
 
-  email-sender-worker:
+  email-sender:
     build:
-      context: EmailSenderWorker
+      context: EmailSender
       dockerfile: Dockerfile
+    ports:
+      - "5299:80"  # Added port mapping for Swagger access
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
       - rabbitmq
       - smtp4dev
 
-  email-sender-worker-dapr:
+  email-sender-dapr:
     image: daprio/daprd:latest
     command: ["./daprd",
-     "-app-id", "email-sender-worker",
+     "-app-id", "email-sender",
      "-app-port", "80",
      "-components-path", "/components"]
     volumes:
       - "./components:/components"
     depends_on:
-      - email-sender-worker
-      - rabbitmq
-    network_mode: "service:email-sender-worker"
+      rabbitmq:
+        condition: service_healthy
+      email-sender:
+        condition: service_started
+    network_mode: "service:email-sender"
 
 volumes:
-  smtp4dev-data: 
+  smtp4dev-data:  
