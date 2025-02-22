@@ -1,5 +1,13 @@
 # Container diagram displaying the communication flow when an action takes place that results in notification being sent
 
+- dapr enables an API to subscribe to events (so it works as a hybrid between a service worker and an API)
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
 ```mermaid
 flowchart LR
 
@@ -11,10 +19,6 @@ flowchart LR
 
     subgraph Frontend
         FrontendDescription["\- WebApp <br> \- TypeScript <br> \- Vue3 <br> \- Vuetify <br>\- Pinia"]:::description
-    end
-
-    subgraph OrchestratorAPI
-        OrchestratorAPIDescription["<br>- C# API (dapr)"]:::description
     end
 
     subgraph LegacyMonolith1
@@ -52,11 +56,9 @@ flowchart LR
 
     Client2 -->|"Integrates with <br> (Uploads document to a case)"| LegacyMonolith2
 
-    LegacyMonolith1 -->|Notify case owner about the upload| OrchestratorAPI
+    LegacyMonolith1 -->|Notify case owner about the upload| NotificationAPI
 
-    LegacyMonolith2 -->|Notify case owner about the upload| OrchestratorAPI
-
-    OrchestratorAPI -->|"Publishes event NotificationInitialized event <br> (Find case owner's notification preferences: Email vs in-app vs both vs none)"| NotificationAPI
+    LegacyMonolith2 -->|Notify case owner about the upload| NotificationAPI
 
     NotificationAPI-->|Publishes event PopulateEmailTemplate|EmailTemplateAPI
     

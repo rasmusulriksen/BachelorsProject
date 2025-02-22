@@ -15,7 +15,7 @@ services:
     image: rnwood/smtp4dev:v3
     ports:
       - '3000:80'
-      - '2525:25'
+      - '2526:25'
     volumes:
       - smtp4dev-data:/smtp4dev
     environment:
@@ -74,6 +74,34 @@ services:
       email-sender-api:
         condition: service_started
     network_mode: "service:email-sender-api"
+
+  notification-api:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    volumes:
+      - ./NotificationAPI:/app
+    working_dir: /app
+    ports:
+      - "5300:80"    # Application port (not for debugging)
+      - "5301:5301"  # Debug port - use this one
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    command: sh -c "dotnet restore && dotnet watch run"  # First restore, then run
+
+  notification-api-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "notification-api",
+     "-app-port", "80",
+     "-components-path", "/components"]
+    volumes:
+      - "./components:/components"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      notification-api:
+        condition: service_started
+    network_mode: "service:notification-api"
+      
 
 volumes:
   smtp4dev-data:  

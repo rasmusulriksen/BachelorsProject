@@ -1,0 +1,14 @@
+{
+  "preferences": [
+    {
+      "userName": "rasmus.ulriksen",
+      "emailEnabled": true,
+      "inAppEnabled": true
+    },
+    {
+      "userName": "another.user",
+      "emailEnabled": false,
+      "inAppEnabled": true
+    }
+  ]
+} 

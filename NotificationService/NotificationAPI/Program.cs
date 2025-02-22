@@ -5,8 +5,11 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
+builder.Services.AddDaprClient();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
-builder.Services.AddSingleton<IEmailSenderService, EmailSenderService>();
+builder.Configuration.AddJsonFile("Config/notification-preferences.json", optional: false);
 
 var app = builder.Build();
 
