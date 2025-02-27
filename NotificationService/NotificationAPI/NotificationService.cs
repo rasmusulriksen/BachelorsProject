@@ -4,10 +4,11 @@ using System.Threading.Tasks;
 using Dapr.Client;
 using NotificationAPI.Model;
 using Microsoft.Extensions.Configuration;
+using System.Text;
 
 public interface INotificationService
 {
-    Task SendNotification(InboundNotification inboundNotification);
+    Task SendNotification(NotificationWithEmailData notificationWithEmailData);
 }
 
 public class NotificationService : INotificationService
@@ -25,20 +26,24 @@ public class NotificationService : INotificationService
         _preferences = _configuration.GetSection("preferences").Get<List<NotificationPreference>>();
     }
 
-    public async Task SendNotification(InboundNotification inboundNotification)
+    public async Task SendNotification(NotificationWithEmailData notificationWithEmailData)
     {
-        var userPreference = _preferences.FirstOrDefault(p => p.UserName == inboundNotification.UserName);
+
+        var userPreference = _preferences.FirstOrDefault(p => p.UserName == notificationWithEmailData.UserName);
         if (userPreference == null) return;
 
-        if (userPreference.InAppEnabled)
-        {
-            var response = await _httpClient.PostAsJsonAsync("http://localhost:8000/alfresco/wcs/api/openesdh/notifications", inboundNotification);
-            response.EnsureSuccessStatusCode();
-        }
+        NotificationWithoutEmailData notificationWithoutEmailData = new NotificationWithoutEmailData(
+            notificationWithEmailData.NotificationType,
+            notificationWithEmailData.JsonData,
+            notificationWithEmailData.UserName);
+
+        var jsonContent = new StringContent(JsonSerializer.Serialize("hej"), Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.PostAsync("http://localhost:8000/alfresco/wcs/api/openesdh/notifications", jsonContent);
 
         if (userPreference.EmailEnabled)
         {
-            await _daprClient.PublishEventAsync("pubsub", "populate-email-template", inboundNotification);
+            await _daprClient.PublishEventAsync("pubsub", "populate-email-template", notificationWithEmailData);
         }
     }
 }

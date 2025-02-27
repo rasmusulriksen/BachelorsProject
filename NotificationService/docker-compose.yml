@@ -76,16 +76,13 @@ services:
     network_mode: "service:email-sender-api"
 
   notification-api:
-    image: mcr.microsoft.com/dotnet/sdk:8.0
-    volumes:
-      - ./NotificationAPI:/app
-    working_dir: /app
+    build:
+      context: NotificationAPI
+      dockerfile: Dockerfile
     ports:
-      - "5300:80"    # Application port (not for debugging)
-      - "5301:5301"  # Debug port - use this one
+      - "5300:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    command: sh -c "dotnet restore && dotnet watch run"  # First restore, then run
 
   notification-api-dapr:
     image: daprio/daprd:latest
