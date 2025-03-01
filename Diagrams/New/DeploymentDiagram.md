@@ -24,32 +24,38 @@ flowchart TD
     classDef monolith fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
 
     subgraph ClientLayer["Client Layer"]
-        direction LR
         WebApp["Internal WebApp<br>Vue3 + TypeScript"]:::webapp
         ExternalClients["External Client<br>Systems"]:::client
     end
 
     subgraph MiddlewareLayer["Middleware Layer"]
-        direction LR
         Gateway["API Gateway"]:::gateway
 
         subgraph ControlPlane["Control Plane"]
-            direction LR
-            TenantService["TenantService<br>Container"]:::container
-            OnboardingService["OnboardingService<br>Container"]:::container
-            AuthService["Keycloak<br>AuthService<br>Container"]:::container
+            subgraph TenantService
+                TenantAPI["TenantAPI"]:::container
+                TenantDB[("TenantDB")]:::database
+            end
+            subgraph OnboardingService
+                OnboardingAPI["OnboardingAPI"]:::container
+                OnboardingDB[("OnboardingDB")]:::database
+            end
+            subgraph IdentityService
+                Keycloak["Keycloak"]:::container
+                Tenant1Realm[("Tenant1Realm")]:::database
+                Tenant2Realm[("Tenant2Realm")]:::database
+                TenantNRealm[("TenantNRealm")]:::database
+            end
         end
     end
 
     subgraph BackendLayer["Backend Layer"]
         subgraph APIs["APIs"]
-            direction LR
             IMSCaseAPIInt["IMSCaseAPIInternal"]:::container
             IMSCaseAPIExt["IMSCaseAPIExternal"]:::container
         end
 
             subgraph Services["Microservices"]
-                direction LR
                 NotificationService["NotificationService<br>Container"]:::container
                 TaskService["TaskService<br>Container"]:::container
             end
