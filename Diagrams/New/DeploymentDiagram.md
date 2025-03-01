@@ -17,10 +17,10 @@ This diagram shows:
 flowchart TD
     classDef container fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
     classDef plane fill:transparent,stroke:#666,stroke-width:2px,color:#fff
-    classDef database fill:#483C32,stroke:#666,stroke-width:1px,color:#fff
-    classDef gateway fill:#3B3B3B,stroke:#666,stroke-width:2px,color:#fff,rx:10
-    classDef webapp fill:#2F4F4F,stroke:#666,stroke-width:2px,color:#fff,rx:10
-    classDef client fill:#4A766E,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef database fill:#3a3a3a,stroke:#666,stroke-width:1px,color:#fff
+    classDef gateway fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef webapp fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef client fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
     classDef monolith fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
 
     subgraph ClientLayer["Client Layer"]
@@ -56,8 +56,8 @@ flowchart TD
         end
 
             subgraph Services["Microservices"]
-                NotificationService["NotificationService<br>Container"]:::container
-                TaskService["TaskService<br>Container"]:::container
+                NotificationService["NotificationService"]:::container
+                TaskService["TaskService"]:::container
             end
 
             subgraph Monoliths["Monoliths"]
