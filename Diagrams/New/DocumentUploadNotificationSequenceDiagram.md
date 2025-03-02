@@ -2,6 +2,9 @@
 
 ```mermaid
 sequenceDiagram
+    
+    autonumber
+
     actor User
     participant WebApp
     participant Gateway
@@ -18,10 +21,10 @@ sequenceDiagram
     
     %% Async notification handling
     LegacyMonolith->>MessageQueueAPI: Publish DocumentUploaded event
-    MessageQueueAPI-->>LegacyMonolith: Event published
-    LegacyMonolith-->>Gateway: Upload successful
-    Gateway-->>WebApp: Success
-    WebApp-->>User: Upload successful
+    MessageQueueAPI-->>LegacyMonolith: Ok
+    LegacyMonolith-->>Gateway: Ok
+    Gateway-->>WebApp: Ok
+    WebApp-->>User: Ok
     
     %% Background processing
     NotificationService->>MessageQueueAPI: Poll for events
@@ -32,15 +35,15 @@ sequenceDiagram
     par Parallel notification processing
         %% Email notification flow
         NotificationService->>MessageQueueAPI: Publish PopulateEmailTemplate event
-        MessageQueueAPI-->>NotificationService: Event published
+        MessageQueueAPI-->>NotificationService: Ok
         EmailService->>MessageQueueAPI: Poll for events
         MessageQueueAPI-->>EmailService: PopulateEmailTemplate event
         EmailService->>SMTP: Send email notification
-        SMTP-->>EmailService: Email sent
+        SMTP-->>EmailService: Ok
         
         and
         %% In-app notification flow
         NotificationService->>LegacyMonolith: POST /api/notification
-        LegacyMonolith-->>NotificationService: In-app notification created
+        LegacyMonolith-->>NotificationService: Ok
     end
 ``` 

@@ -1,74 +1,99 @@
-# Container diagram displaying the communication flow when an action takes place that results in notification being sent
+# Deployment diagram showing the infrastructure and how the software system's containers are deployed
 
-- dapr enables an API to subscribe to events (so it works as a hybrid between a service worker and an API).
-- The data partitioning strategy is siloed, meaning that client1 has one database which is used to centrallt store all data for client.
-- Each microservice has a corresponding database schema, i.e. client1.notifications, client1.tasks etc. (same goes for client2, clientN).
-- The depicted databases are logical representations, because it would be too cumbersome to show the physical separation in this diagram.
-- This siloed data partitioning strategy ensures strong physical data separation, which is important for compliance reasons, and it makes it easier to backup and copy i.e. client1's database specifically. Errors in data will be isolated to the client's database as well.
-- The diagram depicts the use case where a user uploads a document to a case and a notification is triggered.
+This diagram shows:
 
-<br>
-<br>
-<br>
+- The physical/virtual infrastructure that the system runs on
+- How each service is deployed as a separate container/unit
+- Details about deployment nodes, network boundaries, etc.
+- Clear layering: Client → Middleware → Backend
+- Database architecture showing siloed tenant databases
+- Separation between internal and external API access patterns
+- Basic communication flows between main components
+
 <br>
 <br>
 
 ```mermaid
-flowchart LR
+flowchart TD
+    classDef container fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef plane fill:transparent,stroke:#666,stroke-width:2px,color:#fff
+    classDef database fill:#3a3a3a,stroke:#666,stroke-width:1px,color:#fff
+    classDef gateway fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef webapp fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef client fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
+    classDef monolith fill:#2a2a2a,stroke:#666,stroke-width:2px,color:#fff,rx:10
 
-    %% Styling
-    classDef description stroke-width:0px, color:#fff, fill:transparent, font-size:12px
-
-    %% Components
-    Client1((client1.imscase.dk))
-
-    subgraph Frontend
-        FrontendDescription["\- WebApp <br> \- TypeScript <br> \- Vue3 <br> \- Vuetify <br>\- Pinia"]:::description
+    subgraph ClientLayer["Client Layer"]
+        WebApp["Internal WebApp<br>Vue3 + TypeScript"]:::webapp
+        ExternalClients["External Client<br>Systems"]:::client
     end
 
-    subgraph LegacyMonolith1
-        LegacyMonolith1Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
-    end
-    subgraph LegacyMonolith2
-        LegacyMonolith2Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
+    subgraph MiddlewareLayer["Middleware Layer"]
+        Gateway["API Gateway"]:::gateway
+
+        subgraph ControlPlane["Control Plane"]
+            subgraph TenantService
+                TenantAPI["TenantAPI"]:::container
+                TenantDB[("TenantDB")]:::database
+            end
+            subgraph OnboardingService
+                OnboardingAPI["OnboardingAPI"]:::container
+                OnboardingDB[("OnboardingDB")]:::database
+            end
+            subgraph IdentityProvider
+                Keycloak["Keycloak"]:::container
+                Tenant1Realm[("Tenant1Realm")]:::database
+                Tenant2Realm[("Tenant2Realm")]:::database
+                TenantNRealm[("TenantNRealm")]:::database
+            end
+        end
     end
 
-    Client2((client2.imsdigitalpost.dk))
-
-    subgraph EmailSenderAPI
-        EmailSenderAPIDescription["<br>- C# API (dapr) <br>- Subscribes to EmailTemplatePopulated event"]:::description
-    end
-
-        subgraph EmailTemplateAPI
-            EmailTemplateAPIDescription["<br>- C# API (dapr) <br>- Lets users CRUD their custom email templates <br>- Subsribes to PopulateEmailTemplate event <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
-            Client1EmailTemplateDB@{ shape: cyl, label: "client1.emailTemplates \n -PostgreSQL" }
-            Client2EmailTemplateDB@{ shape: cyl, label: "client2.emailTemplates \n -PostgreSQL" }
+    subgraph BackendLayer["Backend Layer"]
+        subgraph APIs["APIs"]
+            IMSCaseAPIInt["IMSCaseAPIInternal"]:::container
+            IMSCaseAPIExt["IMSCaseAPIExternal"]:::container
         end
 
+            subgraph Services["Microservices"]
+                NotificationService["NotificationService"]:::container
+                TaskService["TaskService"]:::container
+            end
 
-    subgraph NotificationAPI
-        NotificationAPIDescription["<br>- C# API (dapr) <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants <br>- Subscribes to NotificationInitialized event"]:::description
-        Client1NotificationDB@{ shape: cyl, label: "client1.notifications \n -PostgreSQL schema" }
-        Client2NotificationDB@{ shape: cyl, label: "client2.notifications \n -PostgreSQL schema" }
+            subgraph Monoliths["Monoliths"]
+
+                subgraph MonolithN["LegacyMonolithN"]
+                    LegacyAppN["LegacyMonolithN"]:::container
+                    LegacyDBN[("LegacyMonolithNDB")]:::database
+                end
+                MonolithN:::monolith
+
+                subgraph Monolith2["LegacyMonolith2"]
+                    LegacyApp2["LegacyMonolith2"]:::container
+                    LegacyDB2[("LegacyMonolith2DB")]:::database
+                end
+                Monolith2:::monolith
+
+                subgraph Monolith1["LegacyMonolith1"]
+                    LegacyApp1["LegacyMonolith1"]:::container
+                    LegacyDB1[("LegacyMonolith1DB")]:::database
+                end
+                Monolith1:::monolith
+
+        end
+        subgraph Databases["Tenant Databases"]
+            Client1DB[("Client1DB<br>- notifications<br>- tasks")]:::database
+            Client2DB[("Client2DB<br>- notifications<br>- tasks")]:::database
+            ClientNDB[("ClientNDB<br>- notifications<br>- tasks")]:::database
+        end
     end
 
-    %% Relationships
-    Client1 -->|Uploads document to a case| Frontend
-
-    Frontend -->|Uploads document to a case| LegacyMonolith1
-
-    Client2 -->|"Integrates with <br> (Uploads document to a case)"| LegacyMonolith2
-
-    LegacyMonolith1 -->|Notify case owner about the upload| NotificationAPI
-
-    LegacyMonolith2 -->|Notify case owner about the upload| NotificationAPI
-
-    NotificationAPI-->|Publishes event PopulateEmailTemplate|EmailTemplateAPI
-    
-    NotificationAPI-->|"POST api/notification"|LegacyMonolithNotificationWebScript
-
-    EmailTemplateAPI-->|Publishes event EmailTemplatePopulated|EmailSenderAPI
-
-    EmailSenderAPI -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server, external (heysender.com)"]
-
+    %% Basic interactions
+    WebApp --> Gateway
+    ExternalClients --> Gateway
+    Gateway --> ControlPlane
+    Gateway --> APIs
+    APIs --> Services
+    APIs --> Monoliths
+    Services --> Databases
 ```
