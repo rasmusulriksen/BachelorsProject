@@ -1,52 +1,56 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Dapr.Client;
 using NotificationAPI.Model;
 using Microsoft.Extensions.Configuration;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
 
 public interface INotificationService
 {
-    Task SendNotification(NotificationWithEmailData notificationWithEmailData);
+    Task<IActionResult> SendNotification(NotificationWithEmailData notificationWithEmailData);
 }
 
 public class NotificationService : INotificationService
 {
     private readonly HttpClient _httpClient;
-    private readonly DaprClient _daprClient;
     private readonly IConfiguration _configuration;
     private readonly List<NotificationPreference> _preferences;
 
-    public NotificationService(HttpClient httpClient, DaprClient daprClient, IConfiguration configuration)
+    public NotificationService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _daprClient = daprClient;
         _configuration = configuration;
         _preferences = _configuration.GetSection("preferences").Get<List<NotificationPreference>>();
     }
 
-    public async Task SendNotification(NotificationWithEmailData notificationWithEmailData)
+    public async Task<IActionResult> SendNotification(NotificationWithEmailData notificationWithEmailData)
     {
+        Console.WriteLine("NotificationService.SendNotification()");
 
-        var userPreference = _preferences.FirstOrDefault(p => p.UserName == notificationWithEmailData.UserName);
-        if (userPreference == null) return;
-
-        NotificationWithoutEmailData notificationWithoutEmailData = new NotificationWithoutEmailData(
-            notificationWithEmailData.NotificationType,
-            notificationWithEmailData.JsonData,
-            notificationWithEmailData.UserName);
-
-        var jsonContent = new StringContent(JsonSerializer.Serialize("hej"), Encoding.UTF8, "application/json");
-
-        var response = await _httpClient.PostAsync("http://localhost:8000/alfresco/wcs/api/openesdh/notifications", jsonContent);
-
-        if (userPreference.EmailEnabled)
+        var messageRequest = new MessageRequest
         {
-            await _daprClient.PublishEventAsync("pubsub", "populate-email-template", notificationWithEmailData);
+            Message = JsonSerializer.Serialize(notificationWithEmailData)
+        };
+
+        var jsonContent = new StringContent(JsonSerializer.Serialize(messageRequest), Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync("http://localhost:5204/api/messagequeue/publish", jsonContent);
+            return new OkObjectResult(new { Status = "Notification sent successfully" });
+        }
+        catch (Exception ex)
+        {
+            return await Task.FromResult(new ObjectResult(new { Status = "Failed to publish message", Error = ex.Message })
+            {
+                StatusCode = 500
+            });
         }
     }
+
+    public class MessageRequest
+    {
+        public string Message { get; set; }
+    }
 }
-
-
-

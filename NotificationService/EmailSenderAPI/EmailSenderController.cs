@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Dapr;
-using Dapr.Client;
 
 [ApiController]
 [Route("[controller]")]
@@ -15,7 +13,6 @@ public class EmailSenderController : ControllerBase
         _emailSenderService = emailSenderService;
     }
 
-    [Topic("pubsub", "EmailTemplatePopulated")]
     [HttpPost("template")]
     public async Task<IActionResult> HandleEmailTemplate([FromBody] EmailReadyToSend email)
     {

@@ -2,7 +2,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-# This COPY uses the build context of current directory due to above docker-compose change
 COPY ["./MessageQueueAPI.csproj", "./"]
 RUN dotnet restore "./MessageQueueAPI.csproj"
 

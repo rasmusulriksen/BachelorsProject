@@ -1,7 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
-    .AddDapr();
+builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -16,8 +15,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCloudEvents();
 app.MapControllers();
-app.MapSubscribeHandler();
 
 app.Run("http://+:80");

@@ -1,84 +1,38 @@
 version: '3.8'
 services:
-  smtp4dev: # Email testing tool  
-    image: rnwood/smtp4dev:v3
-    ports:
-      - '3000:80'
-      - '2526:25'
-    volumes:
-      - smtp4dev-data:/smtp4dev
-    environment:
-      - ServerOptions__HostName=smtp4dev
 
-  email-template-api:
-    build:
-      context: EmailTemplateAPI
-      dockerfile: Dockerfile
-    ports:
-    - "5298:80"  # Map host port 5298 to container port 80 (for Swagger access)
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - smtp4dev
-
-  email-template-api-dapr:
-    image: daprio/daprd:latest
-    command: ["./daprd",
-     "-app-id", "email-template-api",
-     "-app-port", "80",
-     "-components-path", "/components"] 
-    volumes:
-      - "./components:/components"
-    depends_on:
-      email-template-api:
-        condition: service_started
-    network_mode: "service:email-template-api"
-
-  email-sender-api:
-    build:
-      context: EmailSenderAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5299:80"  # Added port mapping for Swagger access
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - smtp4dev
-
-  email-sender-api-dapr:
-    image: daprio/daprd:latest
-    command: ["./daprd",
-     "-app-id", "email-sender-api",
-     "-app-port", "80",
-     "-components-path", "/components"]
-    volumes:
-      - "./components:/components"
-    depends_on:
-      email-sender-api:
-        condition: service_started
-    network_mode: "service:email-sender-api"
-
+  # APIs
   notification-api:
     build:
       context: NotificationAPI
       dockerfile: Dockerfile
     ports:
       - "5300:80"
+      - "5000:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
 
-  notification-api-dapr:
-    image: daprio/daprd:latest
-    command: ["./daprd",
-     "-app-id", "notification-api",
-     "-app-port", "80",
-     "-components-path", "/components"]
-    volumes:
-      - "./components:/components"
+  email-template-api:
+    build:
+      context: EmailTemplateAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5298:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
-      notification-api:
-        condition: service_started
-    network_mode: "service:notification-api"
+      - smtp4dev
+
+  email-sender-api:
+    build:
+      context: EmailSenderAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5299:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
 
   message-queue-api:
     build:
@@ -89,30 +43,42 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
 
-  message-queue-api-dapr:
-    image: daprio/daprd:latest
-    command: ["./daprd",
-     "-app-id", "message-queue-api",
-     "-app-port", "80",
-     "-components-path", "/components"]
-    volumes:
-      - "./components:/components"
-    depends_on:
-      message-queue-api:
-        condition: service_started
-    network_mode: "service:message-queue-api"
-      
-  postgres:
+  # Databases
+  postgres-client1:
     image: postgres:latest
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: postgresql_db
+      POSTGRES_DB: client1.imscase.dk
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data1:/var/lib/postgresql/data
 
+  postgres-client2:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: client2.imscase.dk
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data2:/var/lib/postgresql/data
+
+  # Utilities
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    ports:
+      - '3000:80'
+      - '2526:25'
+    volumes:
+      - smtp4dev-data:/smtp4dev
+    environment:
+      - ServerOptions__HostName=smtp4dev
+
+# Volumes
 volumes:
   smtp4dev-data:
-  postgres_data:  
+  postgres_data1:
+  postgres_data2:  

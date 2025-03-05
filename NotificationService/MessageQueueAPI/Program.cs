@@ -6,10 +6,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<MessageQueueService>(provider =>
         new MessageQueueService(builder.Configuration.GetConnectionString("MessageQueueDb")));
 
-builder.Services.AddControllers()
-    .AddDapr();
-
-builder.Services.AddDaprClient();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 

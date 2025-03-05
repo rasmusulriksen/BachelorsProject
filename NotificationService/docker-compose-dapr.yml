@@ -1,0 +1,119 @@
+version: '3.8'
+services:
+  smtp4dev: # Email testing tool  
+    image: rnwood/smtp4dev:v3
+    ports:
+      - '3000:80'
+      - '2526:25'
+    volumes:
+      - smtp4dev-data:/smtp4dev
+    environment:
+      - ServerOptions__HostName=smtp4dev
+
+  email-template-api:
+    build:
+      context: EmailTemplateAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5298:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
+
+  email-template-api-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "email-template-api",
+     "-app-port", "80",
+     "-components-path", "/components"] 
+    volumes:
+      - "./components:/components"
+    depends_on:
+      email-template-api:
+        condition: service_started
+    network_mode: "service:email-template-api"
+
+  email-sender-api:
+    build:
+      context: EmailSenderAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5299:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
+
+  email-sender-api-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "email-sender-api",
+     "-app-port", "80",
+     "-components-path", "/components"]
+    volumes:
+      - "./components:/components"
+    depends_on:
+      email-sender-api:
+        condition: service_started
+    network_mode: "service:email-sender-api"
+
+  notification-api:
+    build:
+      context: NotificationAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5300:80"
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+
+  notification-api-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "notification-api",
+     "-app-port", "80",
+     "-components-path", "/components"]
+    volumes:
+      - "./components:/components"
+    depends_on:
+      notification-api:
+        condition: service_started
+    network_mode: "service:notification-api"
+
+  message-queue-api:
+    build:
+      context: MessageQueueAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5301:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+
+  message-queue-api-dapr:
+    image: daprio/daprd:latest
+    command: ["./daprd",
+     "-app-id", "message-queue-api",
+     "-app-port", "8080",
+     "-components-path", "/components"]
+    volumes:
+      - "./components:/components"
+    depends_on:
+      message-queue-api:
+        condition: service_started
+    network_mode: "service:message-queue-api"
+      
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: postgresql_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  smtp4dev-data:
+  postgres_data:  

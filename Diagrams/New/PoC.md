@@ -36,6 +36,19 @@ flowchart TD
         GatewayDescription["\- API Gateway <br> \- Dapr enabled <br> \- Routes requests to the correct microservice"]:::description
     end
 
+    subgraph ControlPlane
+    
+        subgraph TenantAPI
+            TenantAPIDescription["\- Holds tenant info, i.e.: <br> - SMTP connection <br> - DB connection <br> - TenantID <br> - Subdomain-to-tenant mapping"]:::description
+            TenantDB@{ shape: cyl, label: "TenantDB" }
+        end
+
+        subgraph IdentityProvider
+            IdentityProviderDescription["\- Keycloak <br>- Realm-per-tenant"]:::description
+        end
+
+    end
+
     subgraph LegacyMonolith1[LegacyMonolith, client1]
     direction LR
         LegacyMonolith1Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
@@ -73,6 +86,8 @@ flowchart TD
     Client2 -->|"Uploads document to a case"| FrontendDigitalPost
 
     FrontendDigitalPost -->|"Uploads document to a case"| Gateway
+
+    Gateway -->|"Authenticates, fetches tenant info"| ControlPlane
 
     Gateway -->|"Redirects client1 request"| LegacyMonolith1
 

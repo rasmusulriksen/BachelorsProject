@@ -1,10 +1,6 @@
-using Dapr;
-using Dapr.Client;
-
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
-    .AddDapr();
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

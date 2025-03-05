@@ -1,12 +1,10 @@
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
-    .AddDapr();
+builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
-builder.Services.AddDaprClient();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 builder.Configuration.AddJsonFile("Config/notification-preferences.json", optional: false);
@@ -19,8 +17,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCloudEvents();
 app.MapControllers();
-app.MapSubscribeHandler();
 
-app.Run("http://+:80");
+app.Run();

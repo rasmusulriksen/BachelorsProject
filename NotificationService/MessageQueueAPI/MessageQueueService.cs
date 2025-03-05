@@ -12,19 +12,18 @@ public class MessageQueueService
         _connectionString = connectionString;
     }
 
-    public async Task<long> EnqueueMessage(string message)
+    public async Task<long> EnqueueMessage(string jsonString)
     {
+        Console.WriteLine("MessageQueueService.EnqueueMessage()");
+
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
 
             using (var command = new NpgsqlCommand("SELECT * FROM queues.notifications_insert_into_queue(@message)", connection))
             {
-                // Serialize the message as a JSON object
-                var jsonMessage = JsonSerializer.Serialize(new { text = message });
-
                 // Add the parameter as a JSON type
-                command.Parameters.AddWithValue("message", NpgsqlTypes.NpgsqlDbType.Json, jsonMessage);
+                command.Parameters.AddWithValue("message", NpgsqlTypes.NpgsqlDbType.Json, jsonString);
 
                 // Execute the command and get the inserted ID
                 var insertedId = await command.ExecuteScalarAsync();

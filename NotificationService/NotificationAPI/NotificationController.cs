@@ -15,6 +15,7 @@ public class NotificationController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> SendNotification([FromBody] NotificationWithEmailData notificationWithEmailData)
     {
+        Console.WriteLine("NotificationController.SendNotification()");
         await _notificationService.SendNotification(notificationWithEmailData);
         return Ok("Notifications sent successfully");
     }

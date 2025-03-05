@@ -20,14 +20,15 @@ namespace MessageQueueAPI.Controllers
         }
 
         [HttpPost("publish")]
-        public async Task<IActionResult> PublishMessage([FromBody] MessageRequest request)
+        public async Task<IActionResult> PublishMessage([FromBody] MessageRequest jsonString)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.Message))
+            Console.WriteLine("MessageQueueController.PublishMessage()");
+            if (jsonString == null || string.IsNullOrWhiteSpace(jsonString.Message))
             {
                 return BadRequest(new { Status = "Message cannot be empty" });
             }
 
-            long insertedId = await _messageQueueService.EnqueueMessage(request.Message);
+            long insertedId = await _messageQueueService.EnqueueMessage(jsonString.Message);
             return Ok(new { Status = "Message published successfully", Id = insertedId });
         }
 
