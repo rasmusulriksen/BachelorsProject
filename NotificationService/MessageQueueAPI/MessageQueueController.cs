@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Text.Json;
+using Model;
 
 namespace MessageQueueAPI.Controllers
 {
@@ -31,23 +30,30 @@ namespace MessageQueueAPI.Controllers
             return Ok(new { Status = "Message published successfully", Id = insertedId });
         }
 
-        // Endpoint to poll for new messages
-        [HttpGet("poll")]
-        public async Task<IActionResult> PollMessages()
+        [HttpGet("poll/{eventName}")]
+        public async Task<IActionResult> PollMessages(string eventName)
         {
-            var messages = await _messageQueueService.DequeueMessages("processor_1", 1);
-            foreach (var (id, message) in messages)
+            List<IdAndMessage> messages = await _messageQueueService.DequeueMessages("processor_1", 1, eventName);
+            foreach (var message in messages)
             {
                 // Pseudo-processing logic
-                Console.WriteLine($"Processing Message ID: {id}, Message: {message}");
+                Console.WriteLine($"Processing Message ID: {message.Id}, Message: {message.Message}");
 
                 // Simulate processing result
                 string processingResultText = "Processed successfully";
 
                 // Mark the message as done
-                await _messageQueueService.MarkMessageAsDone(id, processingResultText, "processor_1");
+                // await _messageQueueService.MarkMessageAsDone(id, processingResultText, "processor_1");
             }
             return Ok(messages);
+        }
+
+        [HttpGet("done/{id}")]
+        public async Task<IActionResult> MarkMessageAsDone(long id)
+        {
+            string processingResultText = "Processed successfully";
+            await _messageQueueService.MarkMessageAsDone(id, processingResultText, "processor_1");
+            return Ok(new { Status = "Message marked as done" });
         }
     }
 }

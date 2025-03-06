@@ -2,6 +2,7 @@ using Npgsql;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Text.Json;
+using Model;
 
 public class MessageQueueService
 {
@@ -35,13 +36,15 @@ public class MessageQueueService
         }
     }
 
-    public async Task<List<(long Id, string Message)>> DequeueMessages(string callingProcessorId, int numElements)
+    public async Task<List<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string eventName)
     {
-        var messages = new List<(long Id, string Message)>();
+        List<IdAndMessage> messages = new List<IdAndMessage>();
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
-            using (var command = new NpgsqlCommand("SELECT * FROM queues.notifications_take_elements_for_processing(@callingProcessorId, @numElements)", connection))
+            // using (var command = new NpgsqlCommand("SELECT * FROM queues.notifications_take_elements_for_processing(@callingProcessorId, @numElements)", connection))
+            string queueToHit = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
+            using (var command = new NpgsqlCommand($"SELECT * FROM {queueToHit}_take_elements_for_processing(@callingProcessorId, @numElements)", connection))
             {
                 command.Parameters.AddWithValue("callingProcessorId", callingProcessorId);
                 command.Parameters.AddWithValue("numElements", numElements);
@@ -52,7 +55,7 @@ public class MessageQueueService
                     {
                         var id = reader.GetInt64(0); // Assuming the first column is id
                         var messageJson = reader.GetString(1); // Assuming the second column is message
-                        messages.Add((id, messageJson));
+                        messages.Add(new IdAndMessage { Id = id, Message = messageJson });
                     }
                 }
             }

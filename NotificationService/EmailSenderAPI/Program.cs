@@ -17,4 +17,4 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 
-app.Run("http://+:80");
+app.Run();

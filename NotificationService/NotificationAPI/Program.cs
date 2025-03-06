@@ -6,6 +6,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddHostedService<NotificationPollingService>();
 
 builder.Configuration.AddJsonFile("Config/notification-preferences.json", optional: false);
 
