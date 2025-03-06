@@ -64,17 +64,17 @@ flowchart TD
     Client2((client2.imsdigitalpost.dk))
 
     subgraph EmailSenderAPI
-        EmailSenderAPIDescription["<br>- C# API <br>- Subscribes to EmailTemplatePopulated event"]:::description
+        EmailSenderAPIDescription["<br>- C# API"]:::description
     end
 
     subgraph EmailTemplateAPI
-        EmailTemplateAPIDescription["<br>- C# API <br>- Lets users CRUD their custom email templates <br>- Subsribes to PopulateEmailTemplate event <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
+        EmailTemplateAPIDescription["<br>- C# API <br>- Lets users CRUD their custom email templates <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
         Client1EmailTemplateDB@{ shape: cyl, label: "client1.emailTemplates \n -PostgreSQL" }
         Client2EmailTemplateDB@{ shape: cyl, label: "client2.emailTemplates \n -PostgreSQL" }
         end
 
     subgraph NotificationAPI
-        NotificationAPIDescription["<br>- C# API <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants <br>- Subscribes to NotificationInitialized event"]:::description
+        NotificationAPIDescription["<br>- C# API <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants"]:::description
         Client1NotificationDB@{ shape: cyl, label: "client1.notifications \n -PostgreSQL schema" }
         Client2NotificationDB@{ shape: cyl, label: "client2.notifications \n -PostgreSQL schema" }
     end

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace MessageQueueAPI.Controllers
 {
@@ -19,20 +20,16 @@ namespace MessageQueueAPI.Controllers
             public string Message { get; set; }
         }
 
-        [HttpPost("publish")]
-        public async Task<IActionResult> PublishMessage([FromBody] MessageRequest jsonString)
+        [HttpPost("publish/{eventName}")]
+        public async Task<IActionResult> PublishMessage([FromBody] JsonElement jsonElement, string eventName)
         {
             Console.WriteLine("MessageQueueController.PublishMessage()");
-            if (jsonString == null || string.IsNullOrWhiteSpace(jsonString.Message))
-            {
-                return BadRequest(new { Status = "Message cannot be empty" });
-            }
 
-            long insertedId = await _messageQueueService.EnqueueMessage(jsonString.Message);
+            string jsonString = jsonElement.GetRawText();
+
+            long insertedId = await _messageQueueService.EnqueueMessage(jsonString, eventName);
             return Ok(new { Status = "Message published successfully", Id = insertedId });
         }
-
-
 
         // Endpoint to poll for new messages
         [HttpGet("poll")]

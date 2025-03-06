@@ -12,7 +12,7 @@ public class MessageQueueService
         _connectionString = connectionString;
     }
 
-    public async Task<long> EnqueueMessage(string jsonString)
+    public async Task<long> EnqueueMessage(string jsonString, string eventName)
     {
         Console.WriteLine("MessageQueueService.EnqueueMessage()");
 
@@ -20,14 +20,17 @@ public class MessageQueueService
         {
             await connection.OpenAsync();
 
-            using (var command = new NpgsqlCommand("SELECT * FROM queues.notifications_insert_into_queue(@message)", connection))
+            string queueToHit = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
+
+            using (var command = new NpgsqlCommand($"SELECT * FROM {queueToHit}_insert_into_queue(@message)", connection))
+
             {
                 // Add the parameter as a JSON type
                 command.Parameters.AddWithValue("message", NpgsqlTypes.NpgsqlDbType.Json, jsonString);
 
                 // Execute the command and get the inserted ID
                 var insertedId = await command.ExecuteScalarAsync();
-                return (long)insertedId; // Assuming the ID is of type BIGINT
+                return (long)insertedId;
             }
         }
     }
