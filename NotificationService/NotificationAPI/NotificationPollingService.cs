@@ -37,53 +37,62 @@ public class NotificationPollingService : BackgroundService
                 var client = _httpClientFactory.CreateClient("MessageQueueClient");
                 var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll/NotificationInitialized", cancellationToken);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    // Read notifications as List of tuples
-                    List<IdAndMessage> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessage>>(cancellationToken: cancellationToken);
-
-                    foreach (var notification in notifications)
-                    {
-                        // Deserialize the message
-                        var message = JsonSerializer.Deserialize<NotificationWithEmailData>(notification.Message);
-
-                        // Find user preference
-                        var preference = _preferences.FirstOrDefault(p => p.UserName == message.UserName);
-                        if (preference != null)
-                        {
-                            _logger.LogInformation("Fetched preference for user: {UserName}", preference.UserName);
-
-                            if (preference.EmailEnabled)
-                            {
-                                // Process email logic
-                                _logger.LogInformation("Email notification is enabled for user: {UserName}", message.UserName);
-                                string url = "http://localhost:5204/api/messagequeue/publish/EmailTemplateShouldBePopulated";
-                                var emailContent = new StringContent(JsonSerializer.Serialize(message), Encoding.UTF8, "application/json");
-                                var response2 = await client.PostAsync(url, emailContent, cancellationToken);
-                                var responseBody2 = await response.Content.ReadAsStringAsync();
-                                _logger.LogInformation("Email sent: {ResponseBody}", responseBody2);
-                            }
-
-                            if (preference.InAppEnabled)
-                            {
-                                // Process in-app notification logic
-                                _logger.LogInformation("In-App notification is enabled for user: {UserName}", message.UserName);
-                            }
-
-                            // Mark the notification as done
-                            await client.GetAsync("http://localhost:5204/api/messagequeue/done/" + notification.Id, cancellationToken);
-
-                        }
-                    }
-                }
-                else
+                if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("No new emails or processing failed: {StatusCode}", response.StatusCode);
+                    return;
+                }
+
+                // Read notifications as List of tuples
+                List<IdAndMessage> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessage>>(cancellationToken: cancellationToken);
+
+                foreach (var notification in notifications)
+                {
+                    // Deserialize the message
+                    var message = JsonSerializer.Deserialize<NotificationWithEmailData>(notification.Message);
+
+                    // Find user preference
+                    var preference = _preferences.FirstOrDefault(p => p.UserName == message.UserName);
+                    if (preference != null)
+                    {
+                        _logger.LogInformation("Fetched preference for user: {UserName}", preference.UserName);
+
+                        if (preference.EmailEnabled)
+                        {
+                            string url = "http://localhost:5204/api/messagequeue/publish/EmailTemplateShouldBePopulated";
+                            var emailContent = new StringContent(JsonSerializer.Serialize(message), Encoding.UTF8, "application/json");
+                            var response2 = await client.PostAsync(url, emailContent, cancellationToken);
+                            var responseBody2 = await response.Content.ReadAsStringAsync();
+                            _logger.LogInformation("Email sent: {ResponseBody}", responseBody2);
+                        }
+
+                        if (preference.InAppEnabled)
+                        {
+                            var inAppNotification = new InAppNotification
+                            {
+                                ActivityType = message.ActivityType,
+                                JsonData = message.JsonData,
+                                UserId = message.UserName
+                            };
+
+                            var serializedInAppNotification = JsonSerializer.Serialize(inAppNotification);
+
+                            var inAppNotificationContent = new StringContent(serializedInAppNotification, Encoding.UTF8, "application/json");
+
+                            var url = "http://localhost:8000/alfresco/wcs/api/openesdh/notifications";
+                            var response3 = await _httpClientFactory.CreateClient().PostAsync(url, inAppNotificationContent, cancellationToken);
+                            var responseBody3 = await response3.Content.ReadAsStringAsync();
+                            _logger.LogInformation("In-app notification sent: {ResponseBody}", responseBody3);
+                        }
+
+                        // Mark the notification as done
+                        await client.GetAsync("http://localhost:5204/api/messagequeue/done/" + notification.Id, cancellationToken);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while polling for emails.");
+                _logger.LogError(ex, "Error occurred while polling for or processing notifications.");
             }
 
             await Task.Delay(_pollingInterval, cancellationToken);
