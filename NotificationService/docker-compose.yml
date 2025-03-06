@@ -62,7 +62,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: client2.imscase.dk
     ports:
-      - "5433:5432"
+      - "5431:5432"
     volumes:
       - postgres_data2:/var/lib/postgresql/data
 

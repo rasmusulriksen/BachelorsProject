@@ -1,6 +1,5 @@
 # Container diagram displaying the communication flow when an action takes place that results in notification being sent
 
-- dapr enables an API to subscribe to events (so it works as a hybrid between a service worker and an API).
 - The data partitioning strategy is siloed, meaning that client1 has one database which is used to centrallt store all data for client.
 - Each microservice has a corresponding database schema, i.e. client1.notifications, client1.tasks etc. (same goes for client2, clientN).
 - The depicted databases are logical representations, because it would be too cumbersome to show the physical separation in this diagram.
@@ -8,6 +7,8 @@
 - The diagram depicts the use case where a user uploads a document to a case and a notification is triggered.
 - On the left side is client1, who receives an email notification only.
 - On the right side is client2, who receives an in-app notification only.
+- All messages are published with a message queue, which is currently a custom made MessageQueueAPI that utilizes the existing single-tenant postgresql database that each customer has (so a schema called queues is added to all tenant databases).
+- This message queue is not included in this diagram, as it would mess up the direction of the diagram.
 
 <br>
 <br>
@@ -33,7 +34,7 @@ flowchart TD
     end
 
     subgraph Gateway
-        GatewayDescription["\- API Gateway <br> \- Dapr enabled <br> \- Routes requests to the correct microservice"]:::description
+        GatewayDescription["\- API Gateway <br>- Routes requests to the correct microservice"]:::description
     end
 
     subgraph ControlPlane
@@ -63,17 +64,17 @@ flowchart TD
     Client2((client2.imsdigitalpost.dk))
 
     subgraph EmailSenderAPI
-        EmailSenderAPIDescription["<br>- C# API (dapr) <br>- Subscribes to EmailTemplatePopulated event"]:::description
+        EmailSenderAPIDescription["<br>- C# API <br>- Subscribes to EmailTemplatePopulated event"]:::description
     end
 
     subgraph EmailTemplateAPI
-        EmailTemplateAPIDescription["<br>- C# API (dapr) <br>- Lets users CRUD their custom email templates <br>- Subsribes to PopulateEmailTemplate event <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
+        EmailTemplateAPIDescription["<br>- C# API <br>- Lets users CRUD their custom email templates <br>- Subsribes to PopulateEmailTemplate event <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
         Client1EmailTemplateDB@{ shape: cyl, label: "client1.emailTemplates \n -PostgreSQL" }
         Client2EmailTemplateDB@{ shape: cyl, label: "client2.emailTemplates \n -PostgreSQL" }
         end
 
     subgraph NotificationAPI
-        NotificationAPIDescription["<br>- C# API (dapr) <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants <br>- Subscribes to NotificationInitialized event"]:::description
+        NotificationAPIDescription["<br>- C# API <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants <br>- Subscribes to NotificationInitialized event"]:::description
         Client1NotificationDB@{ shape: cyl, label: "client1.notifications \n -PostgreSQL schema" }
         Client2NotificationDB@{ shape: cyl, label: "client2.notifications \n -PostgreSQL schema" }
     end
@@ -93,15 +94,15 @@ flowchart TD
 
     Gateway -->|"Redirects client2 request"| LegacyMonolith2
 
-    LegacyMonolith1 -->|Notify case owner about the upload| NotificationAPI
+    LegacyMonolith1 -->|"Publishes message to client1.queues.notifications"| NotificationAPI
 
-    LegacyMonolith2 -->|Notify case owner about the upload| NotificationAPI
+    LegacyMonolith2 -->|"Publishes message to client2.queues.notifications"| NotificationAPI
 
-    NotificationAPI-->|Publishes event PopulateEmailTemplate|EmailTemplateAPI
+    NotificationAPI-->|"Publishes message to client1.queues.emails_to_be_merged_into_template"|EmailTemplateAPI
     
-    NotificationAPI-->|"POST api/notification"|LegacyMonolith1NotificationWebScript
+    NotificationAPI-->|"POST api/notification"|LegacyMonolith2NotificationWebScript
 
-    EmailTemplateAPI-->|Publishes event EmailTemplatePopulated|EmailSenderAPI
+    EmailTemplateAPI-->|"Publishes message to client1.queues.emails_to_be_sent"|EmailSenderAPI
 
     EmailSenderAPI -->|"Connects to SMTP-server and sends the email"|SMTPServer["SMTP Server, external (heysender.com)"]
 
