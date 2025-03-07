@@ -1,0 +1,13 @@
+IMS CASE
+--------
+
+{{localize "DocumentUploadedToCase" language data.ModifierDisplayName data.DocTitle data.CaseTitle}}
+
+Document: {{data.DocTitle}}
+Case: {{data.CaseTitle}}
+
+{{localize "OpenDocument" language}}: localhost:8000/cases/case/{{data.CaseId}}/info
+
+--------
+{{localize "YouReceiveThisEmailBecauseYouHaveAUserInIMSCase" language}}
+© {{currentYear}} IMS Case 

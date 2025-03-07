@@ -3,12 +3,14 @@
     {
       "userName": "rasmus.ulriksen",
       "emailEnabled": true,
-      "inAppEnabled": true
+      "inAppEnabled": true,
+      "linksEnabled": true
     },
     {
       "userName": "another.user",
       "emailEnabled": false,
-      "inAppEnabled": true
+      "inAppEnabled": true,
+      "linksEnabled": false
     }
   ]
 } 

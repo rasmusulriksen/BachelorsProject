@@ -8,6 +8,14 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
 
+// Add HTTP client
+builder.Services.AddHttpClient("MessageQueueClient", client => {
+    // Configure client if needed
+});
+
+// Register the background service
+builder.Services.AddHostedService<EmailTemplatePollingService>();
+
 var app = builder.Build();
 
 // Enable Swagger regardless of environment
@@ -19,4 +27,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run("http://+:80"); // Explicitly set port 80
+app.Run();

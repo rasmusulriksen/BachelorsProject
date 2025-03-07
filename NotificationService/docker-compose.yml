@@ -12,16 +12,16 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
 
-  email-template-api:
-    build:
-      context: EmailTemplateAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5298:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - smtp4dev
+#  email-template-api:
+#    build:
+#      context: EmailTemplateAPI
+#      dockerfile: Dockerfile
+#    ports:
+#      - "5298:80"
+#    environment:
+#      - ASPNETCORE_ENVIRONMENT=Development
+#    depends_on:
+#      - smtp4dev
 
   email-sender-api:
     build:
