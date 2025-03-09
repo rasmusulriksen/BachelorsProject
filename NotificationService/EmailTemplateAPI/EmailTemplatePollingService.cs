@@ -1,16 +1,6 @@
-using System;
-using System.Net.Http;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.IO;
-using HandlebarsDotNet;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Net.Http.Json;
 using EmailTemplateAPI.Handlebars;
 
 public class EmailTemplatePollingService : BackgroundService
@@ -26,16 +16,12 @@ public class EmailTemplatePollingService : BackgroundService
         _logger = logger;
         _hostEnvironment = hostEnvironment;
         
-        // Register Handlebars helpers and partials
         HandlebarsHelperExtensions.RegisterAllHelpersAndPartials(_hostEnvironment, _logger);
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("EmailTemplatePollingService started.");
-        
-        // Log registered partials for debugging
-        HandlebarsHelperExtensions.LogRegisteredPartials(_logger);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -167,6 +153,9 @@ public class EmailTemplatePollingService : BackgroundService
 
         [JsonPropertyName("fromEmail")]
         public string FromEmail { get; set; }
+
+        [JsonPropertyName("linksEnabled")]
+        public bool LinksEnabled { get; set; }
     }
 
     public class JsonData

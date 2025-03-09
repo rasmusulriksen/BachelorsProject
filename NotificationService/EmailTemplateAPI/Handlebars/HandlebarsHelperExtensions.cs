@@ -145,21 +145,5 @@ namespace EmailTemplateAPI.Handlebars
                 throw;
             }
         }
-
-        /// <summary>
-        /// Lists all registered partials for debugging purposes
-        /// </summary>
-        public static void LogRegisteredPartials(ILogger logger)
-        {
-            try
-            {
-                // This is a workaround since Handlebars.NET doesn't expose a way to list registered partials
-                logger.LogInformation("Handlebars partials have been registered. If you're seeing partial resolution errors, check case sensitivity.");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error listing registered partials");
-            }
-        }
     }
 } 

@@ -4,23 +4,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add your services
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
 
-// Add HTTP client
 builder.Services.AddHttpClient("MessageQueueClient", client => {
-    // Configure client if needed
 });
 
-// Register the background service
 builder.Services.AddHostedService<EmailTemplatePollingService>();
 
 var app = builder.Build();
 
-// Enable Swagger regardless of environment
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseRouting();
 app.UseAuthorization();

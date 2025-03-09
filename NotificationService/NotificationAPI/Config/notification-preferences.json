@@ -1,13 +1,13 @@
 {
   "preferences": [
     {
-      "userName": "rasmus.ulriksen",
+      "email": "rasmus.ulriksen@visma.com",
       "emailEnabled": true,
       "inAppEnabled": true,
       "linksEnabled": true
     },
     {
-      "userName": "another.user",
+      "email": "another.user@visma.com",
       "emailEnabled": false,
       "inAppEnabled": true,
       "linksEnabled": false

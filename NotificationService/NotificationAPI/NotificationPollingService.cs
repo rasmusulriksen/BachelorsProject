@@ -1,11 +1,5 @@
-using System;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Model;
 using NotificationAPI.Model;
 
@@ -17,13 +11,19 @@ public class NotificationPollingService : BackgroundService
 
     private readonly IConfiguration _configuration;
     private readonly List<NotificationPreference> _preferences;
+    private readonly INotificationService _notificationService;
 
-    public NotificationPollingService(IHttpClientFactory httpClientFactory, ILogger<NotificationPollingService> logger, IConfiguration configuration)
+    public NotificationPollingService(
+        IHttpClientFactory httpClientFactory, 
+        ILogger<NotificationPollingService> logger, 
+        IConfiguration configuration,
+        INotificationService notificationService)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _configuration = configuration;
         _preferences = _configuration.GetSection("preferences").Get<List<NotificationPreference>>();
+        _notificationService = notificationService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -49,40 +49,29 @@ public class NotificationPollingService : BackgroundService
                 foreach (var notification in notifications)
                 {
                     // Deserialize the message
-                    var message = JsonSerializer.Deserialize<NotificationWithEmailData>(notification.Message);
+                    var message = JsonSerializer.Deserialize<NotificationFromAlfresco>(notification.Message);
 
                     // Find user preference
-                    var preference = _preferences.FirstOrDefault(p => p.UserName == message.UserName);
+                    var preference = _preferences.FirstOrDefault(p => p.Email == message.ToEmail);
                     if (preference != null)
                     {
-                        _logger.LogInformation("Fetched preference for user: {UserName}", preference.UserName);
+                        _logger.LogInformation("Fetched preference for user: {UserName}", preference.Email);
 
-                        if (preference.EmailEnabled)
+                        if (preference.LinksEnabled)
                         {
-                            string url = "http://localhost:5204/api/messagequeue/publish/EmailTemplateShouldBePopulated";
-                            var emailContent = new StringContent(JsonSerializer.Serialize(message), Encoding.UTF8, "application/json");
-                            var response2 = await client.PostAsync(url, emailContent, cancellationToken);
-                            var responseBody2 = await response.Content.ReadAsStringAsync();
-                            _logger.LogInformation("Email sent: {ResponseBody}", responseBody2);
+                            message.LinksEnabled = true;
                         }
 
+                        // Send email notification if enabled
+                        if (preference.EmailEnabled)
+                        {
+                            await _notificationService.CreateEmailNotification(message, cancellationToken);
+                        }
+
+                        // Send in-app notification if enabled
                         if (preference.InAppEnabled)
                         {
-                            var inAppNotification = new InAppNotification
-                            {
-                                ActivityType = message.ActivityType,
-                                JsonData = message.JsonData,
-                                UserId = message.UserName
-                            };
-
-                            var serializedInAppNotification = JsonSerializer.Serialize(inAppNotification);
-
-                            var inAppNotificationContent = new StringContent(serializedInAppNotification, Encoding.UTF8, "application/json");
-
-                            var url = "http://localhost:8000/alfresco/wcs/api/openesdh/notifications";
-                            var response3 = await _httpClientFactory.CreateClient().PostAsync(url, inAppNotificationContent, cancellationToken);
-                            var responseBody3 = await response3.Content.ReadAsStringAsync();
-                            _logger.LogInformation("In-app notification sent: {ResponseBody}", responseBody3);
+                            await _notificationService.CreateInAppNotification(message, cancellationToken);
                         }
 
                         // Mark the notification as done

@@ -17,7 +17,7 @@ public class EmailSenderService : IEmailSenderService
 
     public async Task SendEmailAsync(string subject, string body)
     {
-        using (var client = new SmtpClient("smtp4dev", 25))
+        using (var client = new SmtpClient("localhost", 2526))
         {
             var mailMessage = new MailMessage
             {

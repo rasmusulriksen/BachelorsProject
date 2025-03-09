@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace NotificationAPI.Model;
 
-public class NotificationWithEmailData
+public class NotificationFromAlfresco
 {
     [JsonPropertyName("activityType")]
     public string ActivityType { get; set; }
@@ -20,14 +20,16 @@ public class NotificationWithEmailData
     [JsonPropertyName("fromEmail")]
     public string FromEmail { get; set; }
 
-    public NotificationWithEmailData(string activityType, JsonData jsonData, string userName, string toEmail, string fromEmail)
+    [JsonPropertyName("linksEnabled")]
+    public bool LinksEnabled { get; set; } = false; // Default to false
+
+    public NotificationFromAlfresco(string activityType, JsonData jsonData, string userName, string toEmail, string fromEmail, bool linksEnabled)
     {
         ActivityType = activityType;
         JsonData = jsonData;
         UserName = userName;
         ToEmail = toEmail;
         FromEmail = fromEmail;
+        LinksEnabled = linksEnabled;
     }
-
-    public NotificationWithEmailData() { }
 }

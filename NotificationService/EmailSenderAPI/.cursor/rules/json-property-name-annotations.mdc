@@ -1,0 +1,5 @@
+---
+description: All data types that are used for data serialization and deserialization needs to have a camelCase [JsonPropertyName] annotation
+globs: 
+---
+All data types that are used for data serialization and deserialization needs to have a camelCase [JsonPropertyName] annotation
