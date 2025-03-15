@@ -1,0 +1,126 @@
+version: "3.8"
+services:
+  # APIs
+  notification-api:
+    build:
+      context: NotificationService/NotificationAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5300:80"
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - local_network
+
+  email-template-api:
+    build:
+      context: NotificationService/EmailTemplateAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5298:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
+    networks:
+      - local_network
+
+  email-sender-api:
+    build:
+      context: NotificationService/EmailSenderAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5299:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
+    networks:
+      - local_network
+
+  message-queue-api:
+    build:
+      context: NotificationService/MessageQueueAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5301:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - local_network
+
+  # Databases
+  postgres-client1:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: client1.imscase.dk
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data1:/var/lib/postgresql/data
+    networks:
+      - local_network
+
+  postgres-client2:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: client2.imscase.dk
+    ports:
+      - "5431:5432"
+    volumes:
+      - postgres_data2:/var/lib/postgresql/data
+    networks:
+      - local_network
+
+  # Utilities
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    ports:
+      - "3000:80"
+      - "2526:25"
+    volumes:
+      - smtp4dev-data:/smtp4dev
+    environment:
+      - ServerOptions__HostName=smtp4dev
+    networks:
+      - local_network
+
+  # Authentication
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.0
+    restart: always
+    ports:
+      - "8082:8082"
+      - "8443:8443"
+    environment:
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_RELATIVE_PATH: /idp
+      KC_HTTP_MAX_QUEUED_REQUESTS: "200"
+      KC_HTTP_MANAGEMENT_PORT: "9990"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    command: ["start-dev", "--http-port", "8082", "--https-port", "8443"]
+    networks:
+      - local_network
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+# Networks
+networks:
+  local_network:
+    driver: bridge
+
+# Volumes
+volumes:
+  smtp4dev-data:
+  postgres_data1:
+  postgres_data2:
+  keycloak_data:
