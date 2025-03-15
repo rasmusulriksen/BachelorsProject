@@ -56,9 +56,9 @@ public class MessageQueueService
     }
 
     // Method for dequeuing messages that takes a queue table name
-    public async Task<List<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
+    public async Task<List<IdAndMessageAndNotificationGuid>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
     {
-        List<IdAndMessage> messages = new List<IdAndMessage>();
+        List<IdAndMessageAndNotificationGuid> messages = new List<IdAndMessageAndNotificationGuid>();
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
@@ -82,7 +82,7 @@ public class MessageQueueService
                         // Third column is notification_guid (index 2)
                         var notificationGuid = reader.GetGuid(2);
                         
-                        messages.Add(new IdAndMessage 
+                        messages.Add(new IdAndMessageAndNotificationGuid 
                         { 
                             Id = id, 
                             Message = messageJson,

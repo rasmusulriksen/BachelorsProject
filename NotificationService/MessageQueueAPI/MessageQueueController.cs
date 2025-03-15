@@ -49,11 +49,8 @@ namespace MessageQueueAPI.Controllers
                 // Log for debugging - Include full details to verify the correct table name
                 Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
                 
-                // Use a service-specific processor ID to prevent cross-service message claiming
-                string processorId = $"processor_{referer}";
-                
                 // Dequeue messages
-                List<IdAndMessage> messages = await _messageQueueService.DequeueMessages(processorId, count, queueTable);
+                List<IdAndMessageAndNotificationGuid> messages = await _messageQueueService.DequeueMessages(referer, count, queueTable);
                 
                 foreach (var message in messages)
                 {
@@ -82,11 +79,8 @@ namespace MessageQueueAPI.Controllers
                 
                 // Log for debugging - Include full details to verify the correct table name
                 Console.WriteLine($"MarkMessageAsDone: Using table '{queueTable}' for referer '{referer}' and guid '{notificationGuid}'");
-                
-                // Use a service-specific processor ID to prevent cross-service marking
-                string processorId = $"processor_{referer}";
 
-                await _messageQueueService.MarkMessageAsDone(notificationGuid, "success", processorId, queueTable);
+                await _messageQueueService.MarkMessageAsDone(notificationGuid, "success", referer, queueTable);
                 return Ok(new { Status = "Message marked as done" });
             }
             catch (ArgumentException ex)

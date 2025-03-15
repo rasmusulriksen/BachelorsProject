@@ -44,7 +44,7 @@ public class NotificationPollingService : BackgroundService
                 }
 
                 // Read notifications as List of tuples
-                List<IdAndMessage> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessage>>(cancellationToken: cancellationToken);
+                List<IdAndMessageAndNotificationGuid> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessageAndNotificationGuid>>(cancellationToken: cancellationToken);
 
                 foreach (var notification in notifications)
                 {
@@ -77,7 +77,9 @@ public class NotificationPollingService : BackgroundService
                         // Mark the notification as done
                         // But when is a notification actually done? Who is responsible for updating the status?
                         // Should the processing_status have more states? I.e. "EmailSent", "InAppSent" etc?
-                        await client.GetAsync("http://localhost:5204/api/messagequeue/done/" + notification.Id, cancellationToken);
+                        // Or is the "processing_status" column in the queues.notifications table only related to the processing of the nofitication taking place in this API?
+                        // In this case, it's fair to say that the notification is done when it has been processed by this API.
+                        await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{notification.NotificationGuid}", cancellationToken);
                     }
                 }
             }
