@@ -2,15 +2,15 @@ version: '3.8'
 services:
 
   # APIs
-  notification-api:
-    build:
-      context: NotificationAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5300:80"
-      - "5000:5000"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+  # notification-api:
+  #   build:
+  #     context: NotificationAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5300:80"
+  #     - "5000:5000"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
 
 #  email-template-api:
 #    build:
@@ -23,25 +23,25 @@ services:
 #    depends_on:
 #      - smtp4dev
 
-  email-sender-api:
-    build:
-      context: EmailSenderAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5299:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - smtp4dev
+  # email-sender-api:
+  #   build:
+  #     context: EmailSenderAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5299:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   depends_on:
+  #     - smtp4dev
 
-  message-queue-api:
-    build:
-      context: MessageQueueAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5301:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+  # message-queue-api:
+  #   build:
+  #     context: MessageQueueAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5301:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
 
   # Databases
   postgres-client1:

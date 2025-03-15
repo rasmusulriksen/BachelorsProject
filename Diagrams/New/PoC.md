@@ -18,12 +18,10 @@
 
 ```mermaid
 flowchart TD
-
-    %% Styling
     classDef description stroke-width:0px, color:#fff, fill:transparent, font-size:12px
 
-    %% Components
     Client1((client1.imscase.dk))
+    Client2((client2.imsdigitalpost.dk))
 
     subgraph FrontendCase[Frontend, IMS Case]
         FrontendDescription["Vue + TypeScript"]:::description
@@ -50,33 +48,35 @@ flowchart TD
 
     end
 
-    subgraph LegacyMonolith1[LegacyMonolith, client1]
-    direction LR
-        LegacyMonolith1Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
-        LegacyMonolith1DB@{ shape: cyl, label: "LegacyMonolith1DB" }
-    end
-    subgraph LegacyMonolith2[LegacyMonolith, client2]
+    subgraph ApplicationPlane
+
+        subgraph LegacyMonolith1[LegacyMonolith, client1]
         direction LR
-        LegacyMonolith2Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
-        LegacyMonolith2DB@{ shape: cyl, label: "LegacyMonolith2DB" }
-    end
-
-    Client2((client2.imsdigitalpost.dk))
-
-    subgraph EmailSenderAPI
-        EmailSenderAPIDescription["<br>- C# API"]:::description
-    end
-
-    subgraph EmailTemplateAPI
-        EmailTemplateAPIDescription["<br>- C# API <br>- Lets users CRUD their custom email templates <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
-        Client1EmailTemplateDB@{ shape: cyl, label: "client1.emailTemplates \n -PostgreSQL" }
-        Client2EmailTemplateDB@{ shape: cyl, label: "client2.emailTemplates \n -PostgreSQL" }
+            LegacyMonolith1Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
+            LegacyMonolith1DB@{ shape: cyl, label: "LegacyMonolith1DB" }
+        end
+        subgraph LegacyMonolith2[LegacyMonolith, client2]
+            direction LR
+            LegacyMonolith2Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
+            LegacyMonolith2DB@{ shape: cyl, label: "LegacyMonolith2DB" }
         end
 
-    subgraph NotificationAPI
-        NotificationAPIDescription["<br>- C# API <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants"]:::description
-        Client1NotificationDB@{ shape: cyl, label: "client1.notifications \n -PostgreSQL schema" }
-        Client2NotificationDB@{ shape: cyl, label: "client2.notifications \n -PostgreSQL schema" }
+        subgraph EmailSenderAPI
+            EmailSenderAPIDescription["<br>- C# API"]:::description
+        end
+
+        subgraph EmailTemplateAPI
+            EmailTemplateAPIDescription["<br>- C# API <br>- Lets users CRUD their custom email templates <br>- (Maybe: Lets users preview what the final email will look like) <br>"]:::description
+            Client1EmailTemplateDB@{ shape: cyl, label: "client1.emailTemplates \n -PostgreSQL" }
+            Client2EmailTemplateDB@{ shape: cyl, label: "client2.emailTemplates \n -PostgreSQL" }
+            end
+
+        subgraph NotificationAPI
+            NotificationAPIDescription["<br>- C# API <br>- Lets users CRUD notification settings <br>- Stores notifications for all users across all tenants <br>- Stores notification preferences for all users across all tenants"]:::description
+            Client1NotificationDB@{ shape: cyl, label: "client1.notifications \n -PostgreSQL schema" }
+            Client2NotificationDB@{ shape: cyl, label: "client2.notifications \n -PostgreSQL schema" }
+        end
+
     end
 
     %% Relationships
@@ -100,7 +100,7 @@ flowchart TD
 
     NotificationAPI-->|"Publishes message to client1.queues.emails_to_be_merged_into_template"|EmailTemplateAPI
     
-    NotificationAPI-->|"POST api/notification"|LegacyMonolith2NotificationWebScript
+    NotificationAPI-->|"POST client2.imscase.dk/alfresco/wcs/api/openesdh/notifications"|LegacyMonolith2NotificationWebScript
 
     EmailTemplateAPI-->|"Publishes message to client1.queues.emails_to_be_sent"|EmailSenderAPI
 
