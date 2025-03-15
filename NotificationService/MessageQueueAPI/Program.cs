@@ -3,8 +3,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<MessageQueueService>(provider =>
-        new MessageQueueService(builder.Configuration.GetConnectionString("MessageQueueDb")));
+builder.Services.AddScoped<IMessageQueueRepo>(provider =>
+        new MessageQueueRepo(builder.Configuration.GetConnectionString("MessageQueueDb")));
 
 builder.Services.AddControllers();
 

@@ -6,47 +6,51 @@ using Model;
 using System;
 using MessageQueueAPI;
 
-public class MessageQueueService
+public interface IMessageQueueRepo
+{
+    Task<long> EnqueueMessage(string jsonString, string eventName, Guid? notificationGuid = null);
+    Task<List<IdAndMessageAndNotificationGuid>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName);
+    Task MarkMessageAsDone(Guid notification_guid, string processingResultText, string callingProcessorId, string queueName);
+}
+
+public class MessageQueueRepo : IMessageQueueRepo
 {
     private readonly string _connectionString;
 
-    public MessageQueueService(string connectionString)
+    public MessageQueueRepo(string connectionString)
     {
         _connectionString = connectionString;
     }
 
     public async Task<long> EnqueueMessage(string jsonString, string eventName, Guid? notificationGuid = null)
     {
-        Console.WriteLine("MessageQueueService.EnqueueMessage()");
+        Console.WriteLine("MessageQueueRepo.EnqueueMessage()");
+
+        // If no notificationGuid is provided, this is a new notification and we thus need a new Guid for it
+        if (!notificationGuid.HasValue)
+        {
+            notificationGuid = Guid.NewGuid();
+        }
 
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
 
-            string queueToHit = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
-            string sqlCommand;
-            
-            // If notificationGuid is provided (for downstream queues), use it
-            if (notificationGuid.HasValue)
-            {
-                sqlCommand = $"SELECT * FROM {queueToHit}_insert_into_queue(@message, @notificationGuid)";
-            }
-            else 
-            {
-                // For the first queue (notifications), let the database generate the GUID
-                sqlCommand = $"SELECT * FROM {queueToHit}_insert_into_queue(@message)";
-            }
+            string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
+
+            // Use a generic insert function that takes the queue name as a parameter
+            string sqlCommand = "SELECT queues.insert_into_queue(@queueName, @message, @notificationGuid)";
 
             using (var command = new NpgsqlCommand(sqlCommand, connection))
             {
-                // Add the parameter as a JSON type
+                // Add the queue name parameter
+                command.Parameters.AddWithValue("queueName", queueName);
+                
+                // Add the message parameter as a JSON type
                 command.Parameters.AddWithValue("message", NpgsqlTypes.NpgsqlDbType.Json, jsonString);
                 
-                // Add notification GUID if provided
-                if (notificationGuid.HasValue)
-                {
-                    command.Parameters.AddWithValue("notificationGuid", notificationGuid.Value);
-                }
+                // Add notification GUID
+                command.Parameters.AddWithValue("notificationGuid", notificationGuid.Value);
 
                 // Execute the command and get the inserted ID
                 var insertedId = await command.ExecuteScalarAsync();
@@ -62,10 +66,10 @@ public class MessageQueueService
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
-            
+
             // Use the new dynamic stored procedure with queue name parameter
             using (var command = new NpgsqlCommand(
-                "SELECT * FROM queues.take_elements_for_processing(@queueName, @callingProcessorId, @numElements)", 
+                "SELECT * FROM queues.take_elements_for_processing(@queueName, @callingProcessorId, @numElements)",
                 connection))
             {
                 command.Parameters.AddWithValue("queueName", queueTableName);
@@ -78,13 +82,13 @@ public class MessageQueueService
                     {
                         var id = reader.GetInt64(0); // First column is id
                         var messageJson = reader.GetString(1); // Second column is message
-                        
+
                         // Third column is notification_guid (index 2)
                         var notificationGuid = reader.GetGuid(2);
-                        
-                        messages.Add(new IdAndMessageAndNotificationGuid 
-                        { 
-                            Id = id, 
+
+                        messages.Add(new IdAndMessageAndNotificationGuid
+                        {
+                            Id = id,
                             Message = messageJson,
                             NotificationGuid = notificationGuid
                         });
@@ -100,7 +104,7 @@ public class MessageQueueService
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
-            
+
             using (var command = new NpgsqlCommand("SELECT queues.mark_element_as_done(@queueName, @notification_guid, @processingResultText, @callingProcessorId)", connection))
             {
                 // Add parameters for the function

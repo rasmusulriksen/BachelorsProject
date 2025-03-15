@@ -12,11 +12,11 @@ namespace MessageQueueAPI.Controllers
     [Route("api/[controller]")]
     public class MessageQueueController : ControllerBase
     {
-        private readonly MessageQueueService _messageQueueService;
+        private readonly IMessageQueueRepo _messageQueueRepo;
 
-        public MessageQueueController(MessageQueueService messageQueueService)
+        public MessageQueueController(IMessageQueueRepo messageQueueRepo)
         {
-            _messageQueueService = messageQueueService;
+            _messageQueueRepo = messageQueueRepo;
         }
         
         public class MessageRequest
@@ -31,7 +31,7 @@ namespace MessageQueueAPI.Controllers
 
             string jsonString = jsonElement.GetRawText();
 
-            long insertedId = await _messageQueueService.EnqueueMessage(jsonString, eventName);
+            long insertedId = await _messageQueueRepo.EnqueueMessage(jsonString, eventName);
             return Ok(new { Status = "Message published successfully", Id = insertedId });
         }
 
@@ -50,7 +50,7 @@ namespace MessageQueueAPI.Controllers
                 Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
                 
                 // Dequeue messages
-                List<IdAndMessageAndNotificationGuid> messages = await _messageQueueService.DequeueMessages(referer, count, queueTable);
+                List<IdAndMessageAndNotificationGuid> messages = await _messageQueueRepo.DequeueMessages(referer, count, queueTable);
                 
                 foreach (var message in messages)
                 {
@@ -80,7 +80,7 @@ namespace MessageQueueAPI.Controllers
                 // Log for debugging - Include full details to verify the correct table name
                 Console.WriteLine($"MarkMessageAsDone: Using table '{queueTable}' for referer '{referer}' and guid '{notificationGuid}'");
 
-                await _messageQueueService.MarkMessageAsDone(notificationGuid, "success", referer, queueTable);
+                await _messageQueueRepo.MarkMessageAsDone(notificationGuid, "success", referer, queueTable);
                 return Ok(new { Status = "Message marked as done" });
             }
             catch (ArgumentException ex)
