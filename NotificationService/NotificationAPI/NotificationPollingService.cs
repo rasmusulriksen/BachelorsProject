@@ -31,11 +31,11 @@ public class NotificationPollingService : BackgroundService
         _logger.LogInformation("NotificationPollingService started.");
 
         while (!cancellationToken.IsCancellationRequested)
-        {
+        {   
             try
             {
                 var client = _httpClientFactory.CreateClient("MessageQueueClient");
-                var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll/NotificationInitialized", cancellationToken);
+                var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -75,6 +75,8 @@ public class NotificationPollingService : BackgroundService
                         }
 
                         // Mark the notification as done
+                        // But when is a notification actually done? Who is responsible for updating the status?
+                        // Should the processing_status have more states? I.e. "EmailSent", "InAppSent" etc?
                         await client.GetAsync("http://localhost:5204/api/messagequeue/done/" + notification.Id, cancellationToken);
                     }
                 }

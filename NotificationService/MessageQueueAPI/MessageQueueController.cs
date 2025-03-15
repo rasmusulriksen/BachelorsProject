@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Model;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System;
+using MessageQueueAPI;
 
 namespace MessageQueueAPI.Controllers
 {
@@ -14,6 +18,7 @@ namespace MessageQueueAPI.Controllers
         {
             _messageQueueService = messageQueueService;
         }
+        
         public class MessageRequest
         {
             public string Message { get; set; }
@@ -22,7 +27,7 @@ namespace MessageQueueAPI.Controllers
         [HttpPost("publish/{eventName}")]
         public async Task<IActionResult> PublishMessage([FromBody] JsonElement jsonElement, string eventName)
         {
-            Console.WriteLine("MessageQueueController.PublishMessage()");
+            Console.WriteLine($"MessageQueueController.PublishMessage(): {eventName}");
 
             string jsonString = jsonElement.GetRawText();
 
@@ -30,30 +35,82 @@ namespace MessageQueueAPI.Controllers
             return Ok(new { Status = "Message published successfully", Id = insertedId });
         }
 
-        [HttpGet("poll/{eventName}")]
-        public async Task<IActionResult> PollMessages(string eventName)
+        [HttpGet("poll")]
+        public async Task<IActionResult> PollMessages(int count = 1)
         {
-            List<IdAndMessage> messages = await _messageQueueService.DequeueMessages("processor_1", 1, eventName);
-            foreach (var message in messages)
+            try
             {
-                // Pseudo-processing logic
-                Console.WriteLine($"Processing Message ID: {message.Id}, Message: {message.Message}");
+                // Get the referer header
+                string referer = GetRefererOrDefault();
+                
+                // Get queue table name directly from referer
+                string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
+                
+                // Log for debugging - Include full details to verify the correct table name
+                Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
+                
+                // Use a service-specific processor ID to prevent cross-service message claiming
+                string processorId = $"processor_{referer}";
+                
+                // Dequeue messages
+                List<IdAndMessage> messages = await _messageQueueService.DequeueMessages(processorId, count, queueTable);
+                
+                foreach (var message in messages)
+                {
+                    Console.WriteLine($"MessageQueueController.PollMessages(): {message.Id}, Message: {message.Message}");
+                }
 
-                // Simulate processing result
-                string processingResultText = "Processed successfully";
-
-                // Mark the message as done
-                // await _messageQueueService.MarkMessageAsDone(id, processingResultText, "processor_1");
+                return Ok(messages);
             }
-            return Ok(messages);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in PollMessages: {ex.Message}");
+                return BadRequest(new { Error = ex.Message });
+            }
         }
 
-        [HttpGet("done/{id}")]
-        public async Task<IActionResult> MarkMessageAsDone(long id)
+        [HttpGet("done/{notificationGuid}")]
+        public async Task<IActionResult> MarkMessageAsDone(Guid notificationGuid)
         {
-            string processingResultText = "Processed successfully";
-            await _messageQueueService.MarkMessageAsDone(id, processingResultText, "processor_1");
-            return Ok(new { Status = "Message marked as done" });
+            try
+            {
+                // Get the referer header
+                string referer = GetRefererOrDefault();
+                
+                // Get queue table name directly from referer
+                string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
+                
+                // Log for debugging - Include full details to verify the correct table name
+                Console.WriteLine($"MarkMessageAsDone: Using table '{queueTable}' for referer '{referer}' and guid '{notificationGuid}'");
+                
+                // Use a service-specific processor ID to prevent cross-service marking
+                string processorId = $"processor_{referer}";
+
+                await _messageQueueService.MarkMessageAsDone(notificationGuid, "success", processorId, queueTable);
+                return Ok(new { Status = "Message marked as done" });
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"ArgumentException in MarkMessageAsDone: {ex.Message}");
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in MarkMessageAsDone: {ex.Message}");
+                return StatusCode(500, new { Error = ex.Message });
+            }
+        }
+
+        // Get the referer or return a default value
+        private string GetRefererOrDefault()
+        {
+            if (HttpContext.Request.Headers.TryGetValue("Referer", out var refererValues))
+            {
+                return refererValues.ToString();
+            }
+            
+            // For testing purposes or when no referer is provided
+            return "http://localhost:5258"; // Default to NotificationAPI
         }
     }
 }

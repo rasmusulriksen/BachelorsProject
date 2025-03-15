@@ -1,54 +1,54 @@
 version: "3.8"
 services:
   # APIs
-  notification-api:
-    build:
-      context: NotificationService/NotificationAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5300:80"
-      - "5000:5000"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    networks:
-      - local_network
+  # notification-api:
+  #   build:
+  #     context: NotificationService/NotificationAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5300:80"
+  #     - "5000:5000"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   networks:
+  #     - local_network
 
-  email-template-api:
-    build:
-      context: NotificationService/EmailTemplateAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5298:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - smtp4dev
-    networks:
-      - local_network
+  # email-template-api:
+  #   build:
+  #     context: NotificationService/EmailTemplateAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5298:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   depends_on:
+  #     - smtp4dev
+  #   networks:
+  #     - local_network
 
-  email-sender-api:
-    build:
-      context: NotificationService/EmailSenderAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5299:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - smtp4dev
-    networks:
-      - local_network
+  # email-sender-api:
+  #   build:
+  #     context: NotificationService/EmailSenderAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5299:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   depends_on:
+  #     - smtp4dev
+  #   networks:
+  #     - local_network
 
-  message-queue-api:
-    build:
-      context: NotificationService/MessageQueueAPI
-      dockerfile: Dockerfile
-    ports:
-      - "5301:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    networks:
-      - local_network
+  # message-queue-api:
+  #   build:
+  #     context: NotificationService/MessageQueueAPI
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5301:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   networks:
+  #     - local_network
 
   # Databases
   postgres-client1:
@@ -84,7 +84,7 @@ services:
       - "3000:80"
       - "2526:25"
     volumes:
-      - smtp4dev-data:/smtp4dev
+      - smtp4dev_data:/smtp4dev
     environment:
       - ServerOptions__HostName=smtp4dev
     networks:
@@ -119,8 +119,18 @@ networks:
     driver: bridge
 
 # Volumes
+# I point to some very specific volumes, because I didn't manage to move the data from these volumes,
+# when I moved this docker-compose.yml file
 volumes:
-  smtp4dev-data:
+  smtp4dev_data:
+    external: true
+    name: notificationservice_smtp4dev-data
   postgres_data1:
+    external: true
+    name: notificationservice_postgres_data1
   postgres_data2:
+    external: true
+    name: notificationservice_postgres_data2
   keycloak_data:
+    external: true
+    name: dev_keycloak_data
