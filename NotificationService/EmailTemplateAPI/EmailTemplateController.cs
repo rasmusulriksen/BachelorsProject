@@ -36,19 +36,4 @@ public class EmailTemplatesController : ControllerBase
         _service.CreateTemplate(template);
         return CreatedAtAction(nameof(GetById), new { id = template.Id }, template);
     }
-
-    [HttpPost("PopulateEmailTemplate")]
-    public IActionResult PopulateEmailTemplate(PopulateEmailTemplateDTO dto)
-    {
-        var emailTemplate = _service.PopulateSystemEmail(dto);
-        return Ok(emailTemplate);
-    }
-
-    [HttpPost("PublishTestEmailToDaprQueue")]
-    public IActionResult PublishTestEmailToDaprQueue(EmailReadyToSend email)
-    {
-        _logger.LogInformation("Publishing email to Dapr queue: {@Email}", email);
-        _service.PublishTestEmailToDaprQueue(email);
-        return Ok();
-    }
 }

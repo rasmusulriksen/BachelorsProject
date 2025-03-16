@@ -35,6 +35,10 @@ public class NotificationPollingService : BackgroundService
             try
             {
                 var client = _httpClientFactory.CreateClient("MessageQueueClient");
+                
+                // Add this line to set the Referer header explicitly
+                client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
+                
                 var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
@@ -43,8 +47,8 @@ public class NotificationPollingService : BackgroundService
                     return;
                 }
 
-                // Read notifications as List of tuples
-                List<IdAndMessageAndNotificationGuid> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessageAndNotificationGuid>>(cancellationToken: cancellationToken);
+                // Read notifications as List of QueueMessage
+                List<QueueMessage> notifications = await response.Content.ReadFromJsonAsync<List<QueueMessage>>(cancellationToken: cancellationToken);
 
                 foreach (var notification in notifications)
                 {
@@ -65,7 +69,7 @@ public class NotificationPollingService : BackgroundService
                         // Send email notification if enabled
                         if (preference.EmailEnabled)
                         {
-                            await _notificationService.CreateEmailNotification(message, cancellationToken);
+                            await _notificationService.CreateEmailNotification(message, notification.NotificationGuid, cancellationToken);
                         }
 
                         // Send in-app notification if enabled

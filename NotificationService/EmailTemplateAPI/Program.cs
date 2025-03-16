@@ -4,13 +4,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
-builder.Services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
+// Register the repository and service with proper dependency injection
+builder.Services.AddSingleton<IEmailTemplateRepository, EmailTemplateRepository>();
+builder.Services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
 
+// Configure HTTP client
 builder.Services.AddHttpClient("MessageQueueClient", client => {
+    // Configure any default client settings here if needed
 });
 
-builder.Services.AddHostedService<EmailTemplatePollingService>();
+// Register the background service
+builder.Services.AddHostedService<EmailTemplateBackgroundService>();
 
 var app = builder.Build();
 

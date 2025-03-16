@@ -11,7 +11,7 @@ namespace MessageQueueAPI
         {
             { "http://localhost:5258", QueueTableNames.Notifications },
             { "http://localhost:5298", QueueTableNames.EmailsToBePopulated },
-            { "http://localhost:5299", QueueTableNames.EmailsToBeSent },
+            { "http://localhost:5089", QueueTableNames.EmailsToBeSent },
         };
 
         // Get queue table name for a referer
@@ -22,7 +22,7 @@ namespace MessageQueueAPI
                 throw new ArgumentException("Referer URL cannot be null or empty");
             }
 
-            // Extract the origin (protocol + host + port) from the referer URL
+            // Normalizing the refererURL to avoid issues with trailing slashes and format inconsistensiers
             Uri uri;
             try
             {
@@ -35,7 +35,6 @@ namespace MessageQueueAPI
 
             string origin = $"{uri.Scheme}://{uri.Authority}";
 
-            // Try to get the queue table name for the origin
             if (_refererToQueueMap.TryGetValue(origin, out string queueTableName))
             {
                 return queueTableName;

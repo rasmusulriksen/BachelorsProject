@@ -5,7 +5,7 @@ using Model;
 
 public interface INotificationService
 {
-    Task<string> CreateEmailNotification(NotificationFromAlfresco message, CancellationToken cancellationToken = default);
+    Task<string> CreateEmailNotification(NotificationFromAlfresco message, Guid notificationGuid, CancellationToken cancellationToken = default);
     Task<string> CreateInAppNotification(NotificationFromAlfresco message, CancellationToken cancellationToken = default);
 }
 
@@ -20,14 +20,26 @@ public class NotificationService : INotificationService
         _httpClientFactory = httpClientFactory;
     }
 
-    public async Task<string> CreateEmailNotification(NotificationFromAlfresco message, CancellationToken cancellationToken = default)
+    public async Task<string> CreateEmailNotification(NotificationFromAlfresco message, Guid notificationGuid, CancellationToken cancellationToken = default)
     {
-        // TODO: Parse message into EmailNotification.cs?
         try
         {
             var client = _httpClientFactory.CreateClient("MessageQueueClient");
             string url = "http://localhost:5204/api/messagequeue/publish/EmailTemplateShouldBePopulated";
-            var emailContent = new StringContent(JsonSerializer.Serialize(message), Encoding.UTF8, "application/json");
+            
+            // Create a new object that includes both the message properties and the notificationGuid
+            var payload = new
+            {
+                activityType = message.ActivityType,
+                jsonData = message.JsonData,
+                userName = message.UserName,
+                toEmail = message.ToEmail,
+                fromEmail = message.FromEmail,
+                linksEnabled = message.LinksEnabled,
+                notificationGuid = notificationGuid.ToString()
+            };
+            
+            var emailContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             var response = await client.PostAsync(url, emailContent, cancellationToken);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             

@@ -7,7 +7,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddSingleton<IEmailSenderService, EmailSenderService>();
 builder.Services.AddHttpClient();
-builder.Services.AddHostedService<EmailSenderPollingService>();
+builder.Services.AddHostedService<EmailSenderBackgroundService>();
 
 var app = builder.Build();
 

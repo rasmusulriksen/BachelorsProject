@@ -28,9 +28,4 @@ public class JsonData
 
     [JsonPropertyName("parentRef")]
     public string ParentRef { get; set; }
-
-    public JsonData()
-    { 
-    }
-
 }

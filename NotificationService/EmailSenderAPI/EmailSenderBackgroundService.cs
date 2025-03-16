@@ -1,19 +1,16 @@
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
-public class EmailSenderPollingService : BackgroundService
+public class EmailSenderBackgroundService : BackgroundService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<EmailSenderPollingService> _logger;
+    private readonly ILogger<EmailSenderBackgroundService> _logger;
     private readonly IEmailSenderService _emailSenderService;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
 
-    public EmailSenderPollingService(
-        IHttpClientFactory httpClientFactory, 
-        ILogger<EmailSenderPollingService> logger,
+    public EmailSenderBackgroundService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<EmailSenderBackgroundService> logger,
         IEmailSenderService emailSenderService)
     {
         _httpClientFactory = httpClientFactory;
@@ -23,14 +20,17 @@ public class EmailSenderPollingService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("EmailSenderPollingService started.");
+        _logger.LogInformation("EmailSenderBackgroundService started.");
 
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient("MessageQueueClient");
-                var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll/EmailTemplateHasBeenPopulated", cancellationToken);
+
+                client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5089");
+
+                var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -38,28 +38,27 @@ public class EmailSenderPollingService : BackgroundService
                 }
                 else
                 {
-                    var messages = await response.Content.ReadFromJsonAsync<List<IdAndMessage>>(cancellationToken: cancellationToken);
+                    var messages = await response.Content.ReadFromJsonAsync<List<QueueMessage>>(cancellationToken: cancellationToken);
 
                     foreach (var message in messages)
                     {
                         try
                         {
                             var emailToSend = JsonSerializer.Deserialize<OutboundEmailMessage>(message.Message);
-                            
-                            _logger.LogInformation("Processing email: Subject={Subject}, To={ToEmail}", 
+
+                            _logger.LogInformation("Processing email: Subject={Subject}, To={ToEmail}",
                                 emailToSend.Subject, emailToSend.ToEmail);
-                            
-                            // Send the email using the existing service
+
                             await _emailSenderService.SendEmailAsync(emailToSend.Subject, emailToSend.HtmlBody);
-                            
+
                             _logger.LogInformation("Email sent successfully");
-                            
+
                             // Mark as done
-                            await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{message.Id}", cancellationToken);
+                            await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{message.NotificationGuid}", cancellationToken);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Error processing email message {MessageId}", message.Id);
+                            _logger.LogError(ex, "Error processing email message {MessageId}", message.NotificationGuid);
                         }
                     }
                 }
@@ -77,7 +76,12 @@ public class EmailSenderPollingService : BackgroundService
 }
 
 // Models needed for the service
-public record IdAndMessage(long Id, string Message);
+public class QueueMessage
+{
+    public string Message { get; set; }
+    public Guid NotificationGuid { get; set; }
+
+}
 public record OutboundEmailMessage
 {
     [JsonPropertyName("toEmail")]
@@ -90,4 +94,4 @@ public record OutboundEmailMessage
     public string HtmlBody { get; set; }
     [JsonPropertyName("textBody")]
     public string TextBody { get; set; }
-} 
+}

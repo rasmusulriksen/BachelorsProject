@@ -1,10 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Model;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System;
-using MessageQueueAPI;
 
 namespace MessageQueueAPI.Controllers
 {
@@ -18,21 +14,47 @@ namespace MessageQueueAPI.Controllers
         {
             _messageQueueRepo = messageQueueRepo;
         }
-        
+
         public class MessageRequest
         {
             public string Message { get; set; }
         }
 
         [HttpPost("publish/{eventName}")]
-        public async Task<IActionResult> PublishMessage([FromBody] JsonElement jsonElement, string eventName)
+        public async Task<IActionResult> PublishMessage([FromBody] JsonElement payload, string eventName)
         {
             Console.WriteLine($"MessageQueueController.PublishMessage(): {eventName}");
 
-            string jsonString = jsonElement.GetRawText();
+            // Convert to string to preserve the original format
+            string jsonString = JsonSerializer.Serialize(payload);
 
-            long insertedId = await _messageQueueRepo.EnqueueMessage(jsonString, eventName);
-            return Ok(new { Status = "Message published successfully", Id = insertedId });
+            // Try to extract GUID
+            Guid? notificationGuid = null;
+            try
+            {
+                // Check if notificationGuid property exists and try to parse it
+                if (payload.TryGetProperty("notificationGuid", out JsonElement guidElement))
+                {
+                    string guidString = guidElement.GetString();
+                    if (!string.IsNullOrEmpty(guidString))
+                    {
+                        notificationGuid = Guid.Parse(guidString);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in MessageQueueController.PublishMessage(): {ex.Message}");
+                return BadRequest(new { Error = ex.Message });
+            }
+
+            Guid insertedGuid = await _messageQueueRepo.EnqueueMessage(jsonString, eventName, notificationGuid);
+
+            return Ok(new
+            {
+                Status = "Message published successfully",
+                NotificationGuid = insertedGuid
+            });
         }
 
         [HttpGet("poll")]
@@ -40,21 +62,17 @@ namespace MessageQueueAPI.Controllers
         {
             try
             {
-                // Get the referer header
-                string referer = GetRefererOrDefault();
-                
-                // Get queue table name directly from referer
+                string referer = GetReferer();
+
                 string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
-                
-                // Log for debugging - Include full details to verify the correct table name
+
                 Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
-                
-                // Dequeue messages
-                List<IdAndMessageAndNotificationGuid> messages = await _messageQueueRepo.DequeueMessages(referer, count, queueTable);
-                
+
+                List<QueueMessage> messages = await _messageQueueRepo.DequeueMessages(referer, count, queueTable);
+
                 foreach (var message in messages)
                 {
-                    Console.WriteLine($"MessageQueueController.PollMessages(): {message.Id}, Message: {message.Message}");
+                    Console.WriteLine($"MessageQueueController.PollMessages(): {message.NotificationGuid}, Message: {message.Message}");
                 }
 
                 return Ok(messages);
@@ -72,11 +90,11 @@ namespace MessageQueueAPI.Controllers
             try
             {
                 // Get the referer header
-                string referer = GetRefererOrDefault();
-                
+                string referer = GetReferer();
+
                 // Get queue table name directly from referer
                 string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
-                
+
                 // Log for debugging - Include full details to verify the correct table name
                 Console.WriteLine($"MarkMessageAsDone: Using table '{queueTable}' for referer '{referer}' and guid '{notificationGuid}'");
 
@@ -96,15 +114,15 @@ namespace MessageQueueAPI.Controllers
         }
 
         // Get the referer or return a default value
-        private string GetRefererOrDefault()
+        private string GetReferer()
         {
-            if (HttpContext.Request.Headers.TryGetValue("Referer", out var refererValues))
+            if (HttpContext.Request.Headers.TryGetValue("Referer", out var refererUrl))
             {
-                return refererValues.ToString();
+                return refererUrl.ToString();
             }
             
-            // For testing purposes or when no referer is provided
-            return "http://localhost:5258"; // Default to NotificationAPI
+            throw new ArgumentException("Referer header not found in the request");
+
         }
     }
 }

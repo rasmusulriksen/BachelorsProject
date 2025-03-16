@@ -39,7 +39,7 @@ services:
       context: EmailSenderAPI
       dockerfile: Dockerfile
     ports:
-      - "5299:80"
+      - "5089:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
@@ -63,7 +63,7 @@ services:
       context: NotificationAPI
       dockerfile: Dockerfile
     ports:
-      - "5300:80"
+      - "5258:80"
       - "5000:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -86,7 +86,7 @@ services:
       context: MessageQueueAPI
       dockerfile: Dockerfile
     ports:
-      - "5301:80"
+      - "5204:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
 

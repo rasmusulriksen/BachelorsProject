@@ -8,8 +8,8 @@ using MessageQueueAPI;
 
 public interface IMessageQueueRepo
 {
-    Task<long> EnqueueMessage(string jsonString, string eventName, Guid? notificationGuid = null);
-    Task<List<IdAndMessageAndNotificationGuid>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName);
+    Task<Guid> EnqueueMessage(string jsonString, string eventName, Guid? notificationGuid = null);
+    Task<List<QueueMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName);
     Task MarkMessageAsDone(Guid notification_guid, string processingResultText, string callingProcessorId, string queueName);
 }
 
@@ -22,15 +22,9 @@ public class MessageQueueRepo : IMessageQueueRepo
         _connectionString = connectionString;
     }
 
-    public async Task<long> EnqueueMessage(string jsonString, string eventName, Guid? notificationGuid = null)
+    public async Task<Guid> EnqueueMessage(string jsonString, string eventName, Guid? notificationGuid = null)
     {
         Console.WriteLine("MessageQueueRepo.EnqueueMessage()");
-
-        // If no notificationGuid is provided, this is a new notification and we thus need a new Guid for it
-        if (!notificationGuid.HasValue)
-        {
-            notificationGuid = Guid.NewGuid();
-        }
 
         using (var connection = new NpgsqlConnection(_connectionString))
         {
@@ -38,36 +32,28 @@ public class MessageQueueRepo : IMessageQueueRepo
 
             string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
 
-            // Use a generic insert function that takes the queue name as a parameter
             string sqlCommand = "SELECT queues.insert_into_queue(@queueName, @message, @notificationGuid)";
 
             using (var command = new NpgsqlCommand(sqlCommand, connection))
             {
-                // Add the queue name parameter
                 command.Parameters.AddWithValue("queueName", queueName);
-                
-                // Add the message parameter as a JSON type
                 command.Parameters.AddWithValue("message", NpgsqlTypes.NpgsqlDbType.Json, jsonString);
-                
-                // Add notification GUID
                 command.Parameters.AddWithValue("notificationGuid", notificationGuid.Value);
 
-                // Execute the command and get the inserted ID
-                var insertedId = await command.ExecuteScalarAsync();
-                return (long)insertedId;
+                // Execute the command and get the inserted GUID
+                var insertedGuid = await command.ExecuteScalarAsync();
+                return (Guid)insertedGuid;
             }
         }
     }
 
-    // Method for dequeuing messages that takes a queue table name
-    public async Task<List<IdAndMessageAndNotificationGuid>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
+    public async Task<List<QueueMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
     {
-        List<IdAndMessageAndNotificationGuid> messages = new List<IdAndMessageAndNotificationGuid>();
+        List<QueueMessage> messages = new List<QueueMessage>();
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
 
-            // Use the new dynamic stored procedure with queue name parameter
             using (var command = new NpgsqlCommand(
                 "SELECT * FROM queues.take_elements_for_processing(@queueName, @callingProcessorId, @numElements)",
                 connection))
@@ -80,15 +66,12 @@ public class MessageQueueRepo : IMessageQueueRepo
                 {
                     while (await reader.ReadAsync())
                     {
-                        var id = reader.GetInt64(0); // First column is id
-                        var messageJson = reader.GetString(1); // Second column is message
+                        var messageJson = reader.GetString(0); // First column is message (index 0)
 
-                        // Third column is notification_guid (index 2)
-                        var notificationGuid = reader.GetGuid(2);
+                        var notificationGuid = reader.GetGuid(1); // Second column is notification_guid (index 1)
 
-                        messages.Add(new IdAndMessageAndNotificationGuid
+                        messages.Add(new QueueMessage
                         {
-                            Id = id,
                             Message = messageJson,
                             NotificationGuid = notificationGuid
                         });
