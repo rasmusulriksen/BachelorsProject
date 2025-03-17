@@ -69,7 +69,7 @@ public class NotificationPollingService : BackgroundService
                         // Send email notification if enabled
                         if (preference.EmailEnabled)
                         {
-                            await _notificationService.CreateEmailNotification(message, notification.NotificationGuid, cancellationToken);
+                            await _notificationService.CreateEmailNotification(message, cancellationToken);
                         }
 
                         // Send in-app notification if enabled
@@ -83,7 +83,7 @@ public class NotificationPollingService : BackgroundService
                         // Should the processing_status have more states? I.e. "EmailSent", "InAppSent" etc?
                         // Or is the "processing_status" column in the queues.notifications table only related to the processing of the nofitication taking place in this API?
                         // In this case, it's fair to say that the notification is done when it has been processed by this API.
-                        await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{notification.NotificationGuid}", cancellationToken);
+                        await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{notification.Id}", cancellationToken);
                     }
                 }
             }

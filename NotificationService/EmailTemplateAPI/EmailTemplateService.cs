@@ -12,7 +12,7 @@ public interface IEmailTemplateService
     
     Task<OutboundEmailMessage> ProcessEmailTemplateAsync(EmailActivity emailActivity, string userLanguage, CancellationToken cancellationToken);
         
-    Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, Guid notificationGuid, HttpClient client, CancellationToken cancellationToken);
+    Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, long messageId, HttpClient client, CancellationToken cancellationToken);
 }
 
 public class EmailTemplateService : IEmailTemplateService
@@ -94,24 +94,13 @@ public class EmailTemplateService : IEmailTemplateService
     /// <summary>
     /// Publish a processed email to the outbound email queue
     /// </summary>
-    public async Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, Guid notificationGuid, HttpClient client, CancellationToken cancellationToken)
+    public async Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, HttpClient client, CancellationToken cancellationToken)
     {
         try
         {
             string publishUrl = "http://localhost:5204/api/messagequeue/publish/EmailTemplateHasBeenPopulated";
 
-            // We need to add the notificationGuid
-            var payload = new
-            {
-                toEmail = email.ToEmail,
-                fromEmail = email.FromEmail,
-                subject = email.Subject,
-                htmlBody = email.HtmlBody,
-                textBody = email.TextBody,
-                notificationGuid = notificationGuid.ToString()
-            };
-
-            var publishContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var publishContent = new StringContent(JsonSerializer.Serialize(email), Encoding.UTF8, "application/json");
             
             var response = await client.PostAsync(publishUrl, publishContent, cancellationToken);
             

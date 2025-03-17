@@ -1,26 +1,14 @@
-var builder = WebApplication.CreateBuilder(args);
+// ------------------------------------------------------------------------------
+// <copyright file="Program.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
+// ------------------------------------------------------------------------------
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+#pragma warning disable SA1200 // Using directives should be placed correctly
+using Visma.Ims.Common.Infrastructure;
+using Visma.Ims.NotificationService.MessageQueueAPI;
+#pragma warning restore SA1200 // Using directives should be placed correctly
 
-builder.Services.AddScoped<IMessageQueueRepo>(provider =>
-        new MessageQueueRepo(builder.Configuration.GetConnectionString("MessageQueueDb")));
-
-builder.Services.AddControllers();
-
-var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-app.UseRouting();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+return await ProgramBase.DefaultMain(args, ProgramBase.GetConfiguration, ProgramBase.Run<Startup>);

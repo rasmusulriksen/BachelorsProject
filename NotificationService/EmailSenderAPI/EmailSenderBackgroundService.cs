@@ -54,11 +54,11 @@ public class EmailSenderBackgroundService : BackgroundService
                             _logger.LogInformation("Email sent successfully");
 
                             // Mark as done
-                            await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{message.NotificationGuid}", cancellationToken);
+                            await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{message.Id}", cancellationToken);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Error processing email message {MessageId}", message.NotificationGuid);
+                            _logger.LogError(ex, "Error processing email message {MessageId}", message.Id);
                         }
                     }
                 }
@@ -78,8 +78,8 @@ public class EmailSenderBackgroundService : BackgroundService
 // Models needed for the service
 public class QueueMessage
 {
+    public long Id { get; set; }
     public string Message { get; set; }
-    public Guid NotificationGuid { get; set; }
 
 }
 public record OutboundEmailMessage

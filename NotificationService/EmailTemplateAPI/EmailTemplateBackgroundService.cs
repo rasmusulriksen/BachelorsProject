@@ -49,7 +49,7 @@ public class EmailTemplateBackgroundService : BackgroundService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing message {MessageNotificationGuid}", message.NotificationGuid);
+                        _logger.LogError(ex, "Error processing message {MessageId}", message.Id);
                     }
                 }
             }
@@ -94,44 +94,44 @@ public class EmailTemplateBackgroundService : BackgroundService
 
         try
         {
-            EmailActivity emailActivity = JsonSerializer.Deserialize<EmailActivity>(message.Message);
+            EmailActivity emailActivity = JsonSerializer.Deserialize<EmailActivity>(message.Message);   
 
             OutboundEmailMessage outboundEmailMessage = await _emailTemplateService.ProcessEmailTemplateAsync(emailActivity, userLanguage, cancellationToken);
 
-            bool publishSuccess = await _emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, message.NotificationGuid, client, cancellationToken);
+            bool publishSuccess = await _emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, client, cancellationToken);
 
             if (publishSuccess)
             {
-                await MarkMessageAsDoneAsync(client, message.NotificationGuid, cancellationToken);
+                await MarkMessageAsDoneAsync(client, message.Id, cancellationToken);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing message {MessageNotificationGuid}", message.NotificationGuid);
+            _logger.LogError(ex, "Error processing message {MessageId}", message.Id);
             throw;
         }
     }
 
-    private async Task MarkMessageAsDoneAsync(HttpClient client, Guid notificationGuid, CancellationToken cancellationToken)
+    private async Task MarkMessageAsDoneAsync(HttpClient client, long messageId, CancellationToken cancellationToken)
     {
         try
         {
             client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");   
             
             await client.GetAsync(
-                $"http://localhost:5204/api/messagequeue/done/{notificationGuid}", cancellationToken);
+                $"http://localhost:5204/api/messagequeue/done/{messageId}", cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error marking message {NotificationGuid} as done", notificationGuid);
+            _logger.LogError(ex, "Error marking message {MessageId} as done", messageId);
             throw;
         }
     }
 
     public class QueueMessage
     {
+        public long Id { get; set; }
         public string Message { get; set; }
-        public Guid NotificationGuid { get; set; }
     }
 
     public class EmailActivity

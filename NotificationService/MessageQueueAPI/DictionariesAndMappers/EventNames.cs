@@ -1,12 +1,28 @@
-// This class contains the event names that are used to identify the type of event that occurred.
-// The event names are used to determine which queue table to use based on the event name.
+// <copyright file="EventNames.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
 
-namespace MessageQueueAPI
+namespace Visma.Ims.NotificationService.MessageQueueAPI;
+
+/// <summary>
+/// Constants for event names used in the notification system.
+/// </summary>
+public static class EventNames
 {
-    public static class EventNames
-    {
-        public const string NotificationInitialized = "NotificationInitialized";
-        public const string EmailTemplateShouldBePopulated = "EmailTemplateShouldBePopulated";
-        public const string EmailTemplateHasBeenPopulated = "EmailTemplateHasBeenPopulated";
-    }
+    /// <summary>
+    /// Event triggered when a notification is initialized.
+    /// </summary>
+    public const string NotificationInitialized = "NotificationInitialized";
+
+    /// <summary>
+    /// Event triggered when an email template should be populated.
+    /// </summary>
+    public const string EmailTemplateShouldBePopulated = "EmailTemplateShouldBePopulated";
+
+    /// <summary>
+    /// Event triggered when an email template has been populated.
+    /// </summary>
+    public const string EmailTemplateHasBeenPopulated = "EmailTemplateHasBeenPopulated";
 }

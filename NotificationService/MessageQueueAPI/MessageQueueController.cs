@@ -1,128 +1,87 @@
-using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
-using Model;
+// <copyright file="MessageQueueController.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
 
-namespace MessageQueueAPI.Controllers
-{
+namespace Visma.Ims.NotificationService.MessageQueueAPI;
+
+    using Microsoft.AspNetCore.Mvc;
+
+    /// <summary>
+    /// Controller doing message queue operations.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class MessageQueueController : ControllerBase
     {
-        private readonly IMessageQueueRepo _messageQueueRepo;
+        private readonly IMessageQueueRepo messageQueueRepo;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MessageQueueController"/> class.
+        /// </summary>
+        /// <param name="messageQueueRepo">The message queue repository.</param>
         public MessageQueueController(IMessageQueueRepo messageQueueRepo)
         {
-            _messageQueueRepo = messageQueueRepo;
+            this.messageQueueRepo = messageQueueRepo;
         }
 
-        public class MessageRequest
-        {
-            public string Message { get; set; }
-        }
-
+        /// <summary>
+        /// Publishes a message to the message queue.
+        /// </summary>
+        /// <param name="jsonString">The JSON string to publish.</param>
+        /// <param name="eventName">The event name.</param>
+        /// <returns>Id of the inserted message</returns>
         [HttpPost("publish/{eventName}")]
-        public async Task<IActionResult> PublishMessage([FromBody] JsonElement payload, string eventName)
+        public async Task<IActionResult> PublishMessage([FromBody] string jsonString, string eventName)
         {
             Console.WriteLine($"MessageQueueController.PublishMessage(): {eventName}");
 
-            // Convert to string to preserve the original format
-            string jsonString = JsonSerializer.Serialize(payload);
+            long insertedId = await this.messageQueueRepo.EnqueueMessage(jsonString, eventName);
 
-            // Try to extract GUID
-            Guid? notificationGuid = null;
-            try
-            {
-                // Check if notificationGuid property exists and try to parse it
-                if (payload.TryGetProperty("notificationGuid", out JsonElement guidElement))
-                {
-                    string guidString = guidElement.GetString();
-                    if (!string.IsNullOrEmpty(guidString))
-                    {
-                        notificationGuid = Guid.Parse(guidString);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in MessageQueueController.PublishMessage(): {ex.Message}");
-                return BadRequest(new { Error = ex.Message });
-            }
-
-            Guid insertedGuid = await _messageQueueRepo.EnqueueMessage(jsonString, eventName, notificationGuid);
-
-            return Ok(new
-            {
-                Status = "Message published successfully",
-                NotificationGuid = insertedGuid
-            });
+            return this.Ok(insertedId);
         }
 
+        /// <summary>
+        /// Polls messages from the message queue.
+        /// </summary>
+        /// <param name="count">The number of messages to poll.</param>
+        /// <returns>The action result.</returns>
         [HttpGet("poll")]
         public async Task<IActionResult> PollMessages(int count = 1)
         {
             try
             {
-                string referer = GetReferer();
+                string referer = this.GetReferer();
 
                 string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
 
                 Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
 
-                List<QueueMessage> messages = await _messageQueueRepo.DequeueMessages(referer, count, queueTable);
+                List<QueueMessage> messages = await this.messageQueueRepo.DequeueMessages(referer, count, queueTable);
 
                 foreach (var message in messages)
                 {
-                    Console.WriteLine($"MessageQueueController.PollMessages(): {message.NotificationGuid}, Message: {message.Message}");
+                    Console.WriteLine($"MessageQueueController.PollMessages(): {message.Id}, Message: {message.Message}");
                 }
 
-                return Ok(messages);
+                return this.Ok(messages);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in PollMessages: {ex.Message}");
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        [HttpGet("done/{notificationGuid}")]
-        public async Task<IActionResult> MarkMessageAsDone(Guid notificationGuid)
-        {
-            try
-            {
-                // Get the referer header
-                string referer = GetReferer();
-
-                // Get queue table name directly from referer
-                string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
-
-                // Log for debugging - Include full details to verify the correct table name
-                Console.WriteLine($"MarkMessageAsDone: Using table '{queueTable}' for referer '{referer}' and guid '{notificationGuid}'");
-
-                await _messageQueueRepo.MarkMessageAsDone(notificationGuid, "success", referer, queueTable);
-                return Ok(new { Status = "Message marked as done" });
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"ArgumentException in MarkMessageAsDone: {ex.Message}");
-                return BadRequest(new { Error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception in MarkMessageAsDone: {ex.Message}");
-                return StatusCode(500, new { Error = ex.Message });
+                return this.BadRequest(new { Error = ex.Message });
             }
         }
 
         // Get the referer or return a default value
         private string GetReferer()
         {
-            if (HttpContext.Request.Headers.TryGetValue("Referer", out var refererUrl))
+            if (this.HttpContext.Request.Headers.TryGetValue("Referer", out var refererUrl))
             {
                 return refererUrl.ToString();
             }
-            
-            throw new ArgumentException("Referer header not found in the request");
 
+            throw new ArgumentException("Referer header not found in the request");
         }
     }
-}
