@@ -6,6 +6,7 @@
 
 namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
+using Newtonsoft.Json.Linq;
 using Visma.Ims.Common.Abstractions.Logging;
 using Visma.Ims.Common.Infrastructure.Queues;
 using Visma.Ims.Common.Infrastructure.Tenant;
@@ -13,7 +14,7 @@ using Visma.Ims.Common.Infrastructure.Tenant;
 /// <summary>
 /// Represents a queue inserter for notification service messages.
 /// </summary>
-public class QueueInserter : QueueInserterBase<NotificationMessage>
+public class QueueInserter : QueueInserterBase<JObject>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="QueueInserter"/> class.

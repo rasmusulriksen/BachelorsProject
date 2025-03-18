@@ -24,8 +24,8 @@ using Visma.Ims.NotificationService.MessageQueueAPI.Model;
 public class MessageQueueRepo : IMessageQueueRepo
 {
     private readonly string connectionString;
-    private readonly Dictionary<string, IQueueInserter<NotificationMessage>> queueInserters = new Dictionary<string, IQueueInserter<NotificationMessage>>();
-    private readonly Dictionary<string, IQueueProcessor<JToken>> queueProcessors = new Dictionary<string, IQueueProcessor<JToken>>();
+    private readonly Dictionary<string, IQueueInserter<JObject>> queueInserters = new Dictionary<string, IQueueInserter<JObject>>();
+    private readonly Dictionary<string, IQueueProcessor<JObject>> queueProcessors = new Dictionary<string, IQueueProcessor<JObject>>();
     private readonly ILogFactory logger;
 
     /// <summary>
@@ -42,72 +42,67 @@ public class MessageQueueRepo : IMessageQueueRepo
     /// <summary>
     /// Enqueues a message into the message queue.
     /// </summary>
-    /// <param name="message">The message object to publish.</param>
+    /// <param name="message">The message to publish as a JSON object.</param>
     /// <param name="eventName">The event name.</param>
     /// <returns>The id of the inserted message.</returns>
-    public async Task<long> EnqueueMessage(NotificationMessage message, string eventName)
+    public async Task<long> EnqueueMessage(JObject message, string eventName)
     {
         string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
 
-        if (!this.queueInserters.TryGetValue(queueName, out IQueueInserter<NotificationMessage>? queueInserter))
+        if (!this.queueInserters.TryGetValue(queueName, out IQueueInserter<JObject>? queueInserter))
         {
             TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
             queueInserter = new QueueInserter(queueName, connectionInfo, this.logger);
             this.queueInserters[queueName] = queueInserter;
         }
 
-        var ids = await queueInserter.Insert(new[] { message }).ConfigureAwait(false);  
+        var ids = await queueInserter.Insert(new[] { message }).ConfigureAwait(false);
         return ids.First();
     }
 
     /// <summary>
     /// Dequeues messages from the message queue.
     /// </summary>
-    /// <param name="callingProcessorId">The id of the calling processor.</param>
-    /// <param name="numElements">The number of messages to dequeue.</param>
-    /// <param name="queueTableName">The name of the queue table.</param>
+    /// <param name="referer">The referer.</param>
+    /// <param name="count">The number of messages to dequeue.</param>
     /// <returns>The enumeration of dequeued messages.</returns>
-    public async Task<IEnumerable<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
+    public async Task<IEnumerable<IdAndJObject>> DequeueMessages(string referer, int count)
     {
-        if (!this.queueProcessors.TryGetValue(queueTableName, out IQueueProcessor<JToken>? queueProcessor))
-        {
-            TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
-            queueProcessor = new QueueProcessor(queueTableName, connectionInfo, this.logger);
-            this.queueProcessors[queueTableName] = queueProcessor;
-        }
+        string queueName = RefererToQueueTableMapper.GetQueueTableName(referer);
 
-        IEnumerable<(long Id, JToken Element)> results = await queueProcessor.TakeElementsForProcessing(numElements).ConfigureAwait(false);
-
-        return results.Select(result =>
-        {
-            string jsonMessage = result.Element.ToString();
-
-            return new IdAndMessage
-            {
-                Id = result.Id,
-                Message = jsonMessage
-            };
-        });
-    }
-
-    /// <summary>
-    /// Marks a message as done.
-    /// </summary>
-    /// <param name="messageId">The id of the message.</param>
-    /// <param name="processingResultText">The processing result text.</param>
-    /// <param name="callingProcessorId">The id of the calling processor.</param>
-    /// <param name="queueName">The name of the queue.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task MarkMessageAsDone(long messageId, string processingResultText, string callingProcessorId, string queueName)
-    {
-        if (!this.queueProcessors.TryGetValue(queueName, out IQueueProcessor<JToken>? queueProcessor))
+        if (!this.queueProcessors.TryGetValue(queueName, out IQueueProcessor<JObject>? queueProcessor))
         {
             TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
             queueProcessor = new QueueProcessor(queueName, connectionInfo, this.logger);
             this.queueProcessors[queueName] = queueProcessor;
         }
 
-        await queueProcessor.MakeElementDone(messageId, processingResultText).ConfigureAwait(false);
+        IEnumerable<(long Id, JObject Element)> results = await queueProcessor.TakeElementsForProcessing(count).ConfigureAwait(false);
+
+        // Map results to custom object that we want to return to the controller
+        IEnumerable<IdAndJObject> messagesToReturn = results.Select(r => new IdAndJObject { Id = r.Id, JObject = r.Element });
+
+        return messagesToReturn;
+    }
+
+    /// <summary>
+    /// Marks a message as done.
+    /// </summary>
+    /// <param name="messageId">The id of the message.</param>
+    /// <param name="referer">The referer.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task MarkMessageAsDone(long messageId, string referer)
+    {
+        string queueName = RefererToQueueTableMapper.GetQueueTableName(referer);
+
+        if (!this.queueProcessors.TryGetValue(queueName, out IQueueProcessor<JObject>? queueProcessor))
+        {
+            TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
+            queueProcessor = new QueueProcessor(queueName, connectionInfo, this.logger);
+            this.queueProcessors[queueName] = queueProcessor;
+        }
+
+        await queueProcessor.MakeElementDone(messageId, "Success").ConfigureAwait(false);
     }
 
     private static TenantDatabaseConnectionInfoDto BuildDbConnection(string connectionString)

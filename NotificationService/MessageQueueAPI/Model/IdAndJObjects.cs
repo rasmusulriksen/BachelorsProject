@@ -1,4 +1,4 @@
-// <copyright file="IdAndMessage.cs" company="Visma IMS A/S">
+// <copyright file="IdAndJObjects.cs" company="Visma IMS A/S">
 // Copyright (c) Visma IMS A/S. All rights reserved.
 // Unauthorized reproduction of this file, via any medium is strictly prohibited.
 // Proprietary and confidential.
@@ -6,18 +6,20 @@
 
 namespace Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
+using Newtonsoft.Json.Linq;
+
 /// <summary>
 /// Represents a message in the message queue.
 /// </summary>
-public class IdAndMessage
+public class IdAndJObject
 {
     /// <summary>
-    /// Gets or sets the id of the message.
+    /// Gets or sets the ids of the messages.
     /// </summary>
     public long Id { get; set; }
 
     /// <summary>
-    /// Gets or sets the message json string (this is where the actual message data is stored).
+    /// Gets or sets the messages as a JSON objects.
     /// </summary>
-    required public string Message { get; set; }
+    required public JObject JObject { get; set; }
 }

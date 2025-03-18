@@ -1,31 +1,39 @@
+// <copyright file="JsonData.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
+
+namespace Visma.Ims.NotificationAPI.Model;
+
 using System.Text.Json.Serialization;
 
+/// <summary>
+/// Represents the JSON data in the message.
+/// </summary>
 public class JsonData
 {
-    [JsonPropertyName("docRecordNodeRef")]
-    public string DocRecordNodeRef { get; set; }
-
+    /// <summary>
+    /// Gets or sets the modifier display name.
+    /// </summary>
     [JsonPropertyName("modifierDisplayName")]
-    public string ModifierDisplayName { get; set; }
+    required public string ModifierDisplayName { get; set; }
 
-    [JsonPropertyName("modifier")]
-    public string Modifier { get; set; }
-
+    /// <summary>
+    /// Gets or sets the case id.
+    /// </summary>
     [JsonPropertyName("caseId")]
-    public string CaseId { get; set; }
+    required public string CaseId { get; set; }
 
+    /// <summary>
+    /// Gets or sets the case title.
+    /// </summary>
     [JsonPropertyName("caseTitle")]
-    public string CaseTitle { get; set; }
+    required public string CaseTitle { get; set; }
 
+    /// <summary>
+    /// Gets or sets the doc title.
+    /// </summary>
     [JsonPropertyName("docTitle")]
-    public string DocTitle { get; set; }
-
-    [JsonPropertyName("parentTitle")]
-    public string ParentTitle { get; set; }
-
-    [JsonPropertyName("parentType")]
-    public string ParentType { get; set; }
-
-    [JsonPropertyName("parentRef")]
-    public string ParentRef { get; set; }
+    required public string DocTitle { get; set; }
 }

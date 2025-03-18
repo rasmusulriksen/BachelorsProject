@@ -14,7 +14,7 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI
     /// <summary>
     /// Represents a queue processor for notification service messages.
     /// </summary>
-    public class QueueProcessor : QueueProcessorBase<JToken>
+    public class QueueProcessor : QueueProcessorBase<JObject>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="QueueProcessor"/> class.

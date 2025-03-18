@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <CodeAnalysisRuleSet>..\stylecop.ruleset</CodeAnalysisRuleSet>
-    <RootNamespace>Visma.Ims.NotificationService.MessageQueueAPI</RootNamespace>
+    <RootNamespace>Visma.Ims.MessageQueueAPI</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

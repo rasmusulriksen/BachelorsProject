@@ -1,80 +1,101 @@
-using System.Text;
-using System.Text.Json;
+// <copyright file="NotificationPollingService.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
+
+namespace Visma.Ims.NotificationAPI;
+
 using Model;
-using NotificationAPI.Model;
+using Newtonsoft.Json;
+using Visma.Ims.Common.Abstractions.HostedService;
+using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.NotificationAPI.Configuration;
 
-public class NotificationPollingService : BackgroundService
+/// <summary>
+/// Notification polling service.
+/// </summary>
+public class NotificationPollingService : IRecurringBackgroundService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<NotificationPollingService> _logger;
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    private readonly ILogFactory logger;
+    private readonly IHttpClientFactory httpClientFactory;
+    private readonly NotificationPreferencesConfig preferencesConfig;
+    private readonly INotificationService notificationService;
 
-    private readonly IConfiguration _configuration;
-    private readonly List<NotificationPreference> _preferences;
-    private readonly INotificationService _notificationService;
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NotificationPollingService"/> class.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="preferencesConfig">The preferences config.</param>
+    /// <param name="notificationService">The notification service.</param>
     public NotificationPollingService(
-        IHttpClientFactory httpClientFactory, 
-        ILogger<NotificationPollingService> logger, 
-        IConfiguration configuration,
+        ILogFactory logger,
+        IHttpClientFactory httpClientFactory,
+        NotificationPreferencesConfig preferencesConfig,
         INotificationService notificationService)
     {
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-        _configuration = configuration;
-        _preferences = _configuration.GetSection("preferences").Get<List<NotificationPreference>>();
-        _notificationService = notificationService;
+        this.logger = logger;
+        this.httpClientFactory = httpClientFactory;
+        this.preferencesConfig = preferencesConfig;
+        this.notificationService = notificationService;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    /// <inheritdoc/>
+    public string ServiceName => "My Recurring Background Service";
+
+    /// <inheritdoc/>
+    public virtual TimeSpan RunEvery => TimeSpan.FromSeconds(10);
+
+    /// <inheritdoc/>
+    public virtual TimeSpan CancelAfter => TimeSpan.FromSeconds(56);
+
+    /// <inheritdoc/>
+    public async Task DoWork(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("NotificationPollingService started.");
+        this.logger.Log().Information("NotificationPollingService started.");
 
         while (!cancellationToken.IsCancellationRequested)
-        {   
+        {
             try
             {
-                var client = _httpClientFactory.CreateClient("MessageQueueClient");
-                
+                var client = this.httpClientFactory.CreateClient("MessageQueueClient");
+
                 // Add this line to set the Referer header explicitly
                 client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
-                
+
                 var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("No new emails or processing failed: {StatusCode}", response.StatusCode);
+                    this.logger.Log().Warning("No new emails or processing failed: {StatusCode}", response.StatusCode);
                     return;
                 }
 
-                List<IdAndMessage> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessage>>(cancellationToken: cancellationToken);
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                var responseJObjects = JsonConvert.DeserializeObject<List<IdAndJObject>>(responseContent);
+                var notifications = responseJObjects.Select(n => n.ToIdAndMessage()).ToList();
 
                 foreach (var notification in notifications)
                 {
-                    // Deserialize the message
-                    var message = JsonSerializer.Deserialize<NotificationFromAlfresco>(notification.Message);
-
                     // Find user preference
-                    var preference = _preferences.FirstOrDefault(p => p.Email == message.ToEmail);
+                    var preference = this.preferencesConfig.Preferences.FirstOrDefault(p => p.Email == notification.Message.ToEmail);
                     if (preference != null)
                     {
-                        _logger.LogInformation("Fetched preference for user: {UserName}", preference.Email);
+                        this.logger.Log().Information("Fetched preference for user: {UserName}", preference.Email);
 
-                        if (preference.LinksEnabled)
-                        {
-                            message.LinksEnabled = true;
-                        }
+                        bool linksEnabled = preference.LinksEnabled;
 
                         // Send email notification if enabled
                         if (preference.EmailEnabled)
                         {
-                            await _notificationService.CreateEmailNotification(message, cancellationToken);
+                            await this.notificationService.CreateEmailNotification(notification.Message, linksEnabled, cancellationToken);
                         }
 
                         // Send in-app notification if enabled
                         if (preference.InAppEnabled)
                         {
-                            await _notificationService.CreateInAppNotification(message, cancellationToken);
+                            await this.notificationService.CreateInAppNotification(notification.Message, cancellationToken);
                         }
 
                         // Mark the notification as done
@@ -88,12 +109,12 @@ public class NotificationPollingService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while polling for or processing notifications.");
+                this.logger.Log().Error(ex, "Error occurred while polling for or processing notifications.");
             }
 
-            await Task.Delay(_pollingInterval, cancellationToken);
+            await Task.Delay(this.RunEvery, cancellationToken);
         }
 
-        _logger.LogInformation("Email polling service is stopping.");
+        this.logger.Log().Information("Email polling service is stopping.");
     }
 }

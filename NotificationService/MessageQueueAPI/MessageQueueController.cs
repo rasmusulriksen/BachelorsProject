@@ -8,98 +8,93 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
+using Visma.Ims.Common.Abstractions.Logging;
 using Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
+/// <summary>
+/// Controller doing message queue operations.
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class MessageQueueController : ControllerBase
+{
+    private readonly IMessageQueueRepo messageQueueRepo;
+    private readonly ILogFactory logger;
+
     /// <summary>
-    /// Controller doing message queue operations.
+    /// Initializes a new instance of the <see cref="MessageQueueController"/> class.
     /// </summary>
-    [ApiController]
-    [Route("api/[controller]")]
-    public class MessageQueueController : ControllerBase
+    /// <param name="messageQueueRepo">The message queue repository.</param>
+    /// <param name="logger">The logger factory for logging.</param>
+    public MessageQueueController(IMessageQueueRepo messageQueueRepo, ILogFactory logger)
     {
-        private readonly IMessageQueueRepo messageQueueRepo;
+        this.messageQueueRepo = messageQueueRepo;
+        this.logger = logger;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MessageQueueController"/> class.
-        /// </summary>
-        /// <param name="messageQueueRepo">The message queue repository.</param>
-        public MessageQueueController(IMessageQueueRepo messageQueueRepo)
+    /// <summary>
+    /// Publishes a message to the message queue.
+    /// </summary>
+    /// <param name="message">The message to publish as a JSON object.</param>
+    /// <param name="eventName">The event name.</param>
+    /// <returns>Id of the inserted message</returns>
+    [HttpPost("publish/{eventName}")]
+    public async Task<IActionResult> PublishMessage([FromBody] JObject message, string eventName)
+    {
+        this.logger.Log().Information($"MessageQueueController.PublishMessage(): {eventName}");
+
+        long insertedId = await this.messageQueueRepo.EnqueueMessage(message, eventName);
+
+        return this.Ok(new { Status = "Message published successfully", Id = insertedId });
+    }
+
+    /// <summary>
+    /// Polls messages from the message queue.
+    /// </summary>
+    /// <param name="count">The number of messages to poll.</param>
+    /// <returns>The action result.</returns>
+    [HttpGet("poll")]
+    public async Task<IActionResult> PollMessages(int count = 1)
+    {
+        try
         {
-            this.messageQueueRepo = messageQueueRepo;
+            string referer = this.GetReferer();
+
+            IEnumerable<IdAndJObject> messages = await this.messageQueueRepo.DequeueMessages(referer, count);
+
+            this.logger.Log().Information($"MessageQueueController.PollMessages(): {messages.Count()} messages polled");
+
+            return this.Ok(messages);
         }
-
-        /// <summary>
-        /// Publishes a message to the message queue.
-        /// </summary>
-        /// <param name="message">The message to publish.</param>
-        /// <param name="eventName">The event name.</param>
-        /// <returns>Id of the inserted message</returns>
-        [HttpPost("publish/{eventName}")]
-        public async Task<IActionResult> PublishMessage([FromBody] NotificationMessage message, string eventName)
+        catch (Exception ex)
         {
-            Console.WriteLine($"MessageQueueController.PublishMessage(): {eventName}");
-
-            long insertedId = await this.messageQueueRepo.EnqueueMessage(message, eventName);
-
-            return this.Ok(new { Status = "Message published successfully", Id = insertedId });
-        }
-
-        /// <summary>
-        /// Polls messages from the message queue.
-        /// </summary>
-        /// <param name="count">The number of messages to poll.</param>
-        /// <returns>The action result.</returns>
-        [HttpGet("poll")]
-        public async Task<IActionResult> PollMessages(int count = 1)
-        {
-            try
-            {
-                string referer = this.GetReferer();
-                string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
-
-                Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
-
-                IEnumerable<IdAndMessage> messages = await this.messageQueueRepo.DequeueMessages(referer, count, queueTable);
-
-                foreach (var message in messages)
-                {
-                    Console.WriteLine($"MessageQueueController.PollMessages(): MessageID: {message.Id}, Message: {message.Message}");
-                }
-
-                return this.Ok(messages);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in PollMessages: {ex.Message}");
-                return this.BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        // Get the referer or return a default value
-        private string GetReferer()
-        {
-            if (this.HttpContext.Request.Headers.TryGetValue("Referer", out var refererUrl))
-            {
-                return refererUrl.ToString();
-            }
-
-            throw new ArgumentException("Referer header not found in the request");
+            this.logger.Log().Error(ex, "Error in PollMessages");
+            return this.BadRequest(new { Error = ex.Message });
         }
     }
 
-public class NotificationMessage
-{
-    public string ActivityType { get; set; }
-    public JsonData JsonData { get; set; }
-    public string UserName { get; set; }
-    public string ToEmail { get; set; }
-    public string FromEmail { get; set; }
-}
+    /// <summary>
+    /// Mark a message as done.
+    /// </summary>
+    /// <param name="id">The id of the message to mark as done.</param>
+    /// <returns>The action result.</returns>
+    [HttpPost("done/{id}")]
+    public async Task<IActionResult> MarkMessageAsDone(long id)
+    {
+        string referer = this.GetReferer();
 
-public class JsonData
-{
-    public string ModifierDisplayName { get; set; }
-    public string CaseId { get; set; }
-    public string CaseTitle { get; set; }
-    public string DocTitle { get; set; }
+        await this.messageQueueRepo.MarkMessageAsDone(id, referer);
+        return this.Ok(new { Status = "Message marked as done" });
+    }
+
+    private string GetReferer()
+    {
+        if (this.HttpContext.Request.Headers.TryGetValue("Referer", out var refererUrl))
+        {
+            return refererUrl.ToString();
+        }
+
+        throw new ArgumentException("Referer header not found in the request");
+    }
 }

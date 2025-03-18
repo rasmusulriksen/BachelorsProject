@@ -1,24 +1,16 @@
-var builder = WebApplication.CreateBuilder(args);
+// ------------------------------------------------------------------------------
+// <copyright file="Program.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
+// ------------------------------------------------------------------------------
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+#pragma warning disable SA1200 // Using directives should be placed correctly
+using Visma.Ims.Common.Infrastructure;
+using Visma.Ims.NotificationAPI;
+#pragma warning restore SA1200 // Using directives should be placed correctly
 
-builder.Services.AddControllers();
-
-builder.Services.AddHttpClient();
-builder.Services.AddSingleton<INotificationService, NotificationService>();
-builder.Services.AddHostedService<NotificationPollingService>();
-
-builder.Configuration.AddJsonFile("Config/notification-preferences.json", optional: false);
-
-var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.MapControllers();
-
-app.Run();
+#pragma warning disable SA1002 // Space after colon
+return await ProgramBase.DefaultMain(args, ProgramBase.GetConfiguration, ProgramBase.Run<Startup>);
+#pragma warning restore SA1002 // Space after colon
