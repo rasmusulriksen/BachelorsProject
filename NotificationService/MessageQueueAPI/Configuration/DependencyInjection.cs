@@ -44,7 +44,7 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     protected override void RegisterDependencies(Container container)
     {
         // Register the MessageQueueRepo with its connection string
-        container.RegisterInstance<IMessageQueueRepo>(new MessageQueueRepo(this.connectionString));
+        container.RegisterInstance<IMessageQueueRepo>(new MessageQueueRepo(this.connectionString, this.logger));
 
         this.logger.Log().Information("Registered MessageQueueRepo with connection string");
     }

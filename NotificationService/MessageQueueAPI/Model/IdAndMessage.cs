@@ -1,4 +1,4 @@
-// <copyright file="QueueMessage.cs" company="Visma IMS A/S">
+// <copyright file="IdAndMessage.cs" company="Visma IMS A/S">
 // Copyright (c) Visma IMS A/S. All rights reserved.
 // Unauthorized reproduction of this file, via any medium is strictly prohibited.
 // Proprietary and confidential.
@@ -9,7 +9,7 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 /// <summary>
 /// Represents a message in the message queue.
 /// </summary>
-public class QueueMessage
+public class IdAndMessage
 {
     /// <summary>
     /// Gets or sets the id of the message.

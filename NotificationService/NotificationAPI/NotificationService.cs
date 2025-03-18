@@ -1,7 +1,6 @@
 using System.Text.Json;
 using NotificationAPI.Model;
 using System.Text;
-using Model;
 
 public interface INotificationService
 {

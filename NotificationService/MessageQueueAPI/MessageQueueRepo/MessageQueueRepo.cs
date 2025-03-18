@@ -9,8 +9,10 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Model;
 using Npgsql;
+using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Tenant;
+using Visma.Ims.Common.Abstractions.Queues;
 
 /// <summary>
 /// Represents the message queue repository.
@@ -18,14 +20,18 @@ using Npgsql;
 public class MessageQueueRepo : IMessageQueueRepo
 {
     private readonly string connectionString;
+    private readonly Dictionary<string, IQueueInserter<EventNameAndMessage>> queueInserters = new Dictionary<string, IQueueInserter<EventNameAndMessage>>();
+    private readonly ILogFactory logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MessageQueueRepo"/> class.
     /// </summary>
     /// <param name="connectionString">The connection string for the database.</param>
-    public MessageQueueRepo(string connectionString)
+    /// <param name="logger">The logger for logging messages.</param>
+    public MessageQueueRepo(string connectionString, ILogFactory logger)
     {
         this.connectionString = connectionString;
+        this.logger = logger;
     }
 
     /// <summary>
@@ -36,26 +42,24 @@ public class MessageQueueRepo : IMessageQueueRepo
     /// <returns>The id of the inserted message.</returns>
     public async Task<long> EnqueueMessage(string jsonString, string eventName)
     {
-        Console.WriteLine("MessageQueueRepo.EnqueueMessage()");
+        string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
 
-        using (var connection = new NpgsqlConnection(this.connectionString))
+        if (!this.queueInserters.TryGetValue(queueName, out IQueueInserter<EventNameAndMessage>? queueInserter))
         {
-            await connection.OpenAsync();
+            TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
 
-            string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
-
-            string sqlCommand = "SELECT queues.insert_into_queue(@queueName, @message)";
-
-            using (var command = new NpgsqlCommand(sqlCommand, connection))
-            {
-                command.Parameters.AddWithValue("queueName", queueName);
-                command.Parameters.AddWithValue("message", NpgsqlTypes.NpgsqlDbType.Json, jsonString);
-
-                // Execute the command and get the inserted id
-                var insertedId = await command.ExecuteScalarAsync();
-                return (long)insertedId;
-            }
+            queueInserter = new QueueInserter(queueName, connectionInfo, this.logger);
+            this.queueInserters[queueName] = queueInserter;
         }
+
+        var messageContent = new EventNameAndMessage
+        {
+            Content = jsonString,
+            EventName = eventName
+        };
+
+        var ids = await queueInserter.Insert(new[] { messageContent }).ConfigureAwait(false);
+        return ids.First();
     }
 
     /// <summary>
@@ -65,9 +69,9 @@ public class MessageQueueRepo : IMessageQueueRepo
     /// <param name="numElements">The number of messages to dequeue.</param>
     /// <param name="queueTableName">The name of the queue table.</param>
     /// <returns>The list of dequeued messages.</returns>
-    public async Task<List<QueueMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
+    public async Task<List<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
     {
-        List<QueueMessage> messages = new List<QueueMessage>();
+        List<IdAndMessage> messages = new List<IdAndMessage>();
         using (var connection = new NpgsqlConnection(this.connectionString))
         {
             await connection.OpenAsync();
@@ -87,7 +91,7 @@ public class MessageQueueRepo : IMessageQueueRepo
                         var id = reader.GetInt64(0); // First column is id (index 0)
                         var messageJson = reader.GetString(1); // Second column is message (index 1)
 
-                        messages.Add(new QueueMessage
+                        messages.Add(new IdAndMessage
                         {
                             Id = id,
                             Message = messageJson
@@ -126,5 +130,27 @@ public class MessageQueueRepo : IMessageQueueRepo
                 await command.ExecuteNonQueryAsync();
             }
         }
+    }
+
+    private static TenantDatabaseConnectionInfoDto BuildDbConnection(string connectionString)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        if (string.IsNullOrEmpty(builder.Host) ||
+            string.IsNullOrEmpty(builder.Database) ||
+            string.IsNullOrEmpty(builder.Username) ||
+            string.IsNullOrEmpty(builder.Password))
+        {
+            throw new ArgumentException("Connection string is missing required components", nameof(connectionString));
+        }
+
+        return new TenantDatabaseConnectionInfoDto
+        {
+            Host = builder.Host,
+            Port = builder.Port.ToString(),
+            Database = builder.Database,
+            User = builder.Username,
+            Password = builder.Password
+        };
     }
 }

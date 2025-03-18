@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Model;
 using NotificationAPI.Model;
 
 public class NotificationPollingService : BackgroundService

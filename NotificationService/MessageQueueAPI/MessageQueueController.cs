@@ -6,7 +6,8 @@
 
 namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
-    using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
     /// <summary>
     /// Controller doing message queue operations.
@@ -29,17 +30,20 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
         /// <summary>
         /// Publishes a message to the message queue.
         /// </summary>
-        /// <param name="jsonString">The JSON string to publish.</param>
+        /// <param name="message">The message to publish.</param>
         /// <param name="eventName">The event name.</param>
         /// <returns>Id of the inserted message</returns>
         [HttpPost("publish/{eventName}")]
-        public async Task<IActionResult> PublishMessage([FromBody] string jsonString, string eventName)
+        public async Task<IActionResult> PublishMessage([FromBody] NotificationMessage message, string eventName)
         {
             Console.WriteLine($"MessageQueueController.PublishMessage(): {eventName}");
 
+            // Serialize the message object to JSON
+            string jsonString = JsonSerializer.Serialize(message);
+
             long insertedId = await this.messageQueueRepo.EnqueueMessage(jsonString, eventName);
 
-            return this.Ok(insertedId);
+            return this.Ok(new { Status = "Message published successfully", Id = insertedId });
         }
 
         /// <summary>
@@ -58,7 +62,7 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
                 Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
 
-                List<QueueMessage> messages = await this.messageQueueRepo.DequeueMessages(referer, count, queueTable);
+                List<IdAndMessage> messages = await this.messageQueueRepo.DequeueMessages(referer, count, queueTable);
 
                 foreach (var message in messages)
                 {
@@ -85,3 +89,20 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
             throw new ArgumentException("Referer header not found in the request");
         }
     }
+
+public class NotificationMessage
+{
+    public string ActivityType { get; set; }
+    public JsonData JsonData { get; set; }
+    public string UserName { get; set; }
+    public string ToEmail { get; set; }
+    public string FromEmail { get; set; }
+}
+
+public class JsonData
+{
+    public string ModifierDisplayName { get; set; }
+    public string CaseId { get; set; }
+    public string CaseTitle { get; set; }
+    public string DocTitle { get; set; }
+}

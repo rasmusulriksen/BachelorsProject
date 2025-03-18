@@ -14,15 +14,15 @@ public static class QueueTableNames
     /// <summary>
     /// Queue table for unprocessed notifications.
     /// </summary>
-    public const string UnprocessedNotifications = "queues.unprocessed_notifications";
+    public const string UnprocessedNotifications = "unprocessed_notifications";
 
     /// <summary>
     /// Queue table for emails waiting to be populated with content.
     /// </summary>
-    public const string EmailsToBePopulated = "queues.emails_to_be_merged_into_template";
+    public const string EmailsToBePopulated = "emails_to_be_merged_into_template";
 
     /// <summary>
     /// Queue table for emails that are ready to be sent.
     /// </summary>
-    public const string EmailsToBeSent = "queues.emails_to_be_sent";
+    public const string EmailsToBeSent = "emails_to_be_sent";
 }
