@@ -8,6 +8,7 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
     /// <summary>
     /// Controller doing message queue operations.
@@ -38,10 +39,7 @@ using Microsoft.AspNetCore.Mvc;
         {
             Console.WriteLine($"MessageQueueController.PublishMessage(): {eventName}");
 
-            // Serialize the message object to JSON
-            string jsonString = JsonSerializer.Serialize(message);
-
-            long insertedId = await this.messageQueueRepo.EnqueueMessage(jsonString, eventName);
+            long insertedId = await this.messageQueueRepo.EnqueueMessage(message, eventName);
 
             return this.Ok(new { Status = "Message published successfully", Id = insertedId });
         }
@@ -57,16 +55,15 @@ using Microsoft.AspNetCore.Mvc;
             try
             {
                 string referer = this.GetReferer();
-
                 string queueTable = RefererToQueueTableMapper.GetQueueTableName(referer);
 
                 Console.WriteLine($"PollMessages: Dequeuing from table '{queueTable}' for referer '{referer}'");
 
-                List<IdAndMessage> messages = await this.messageQueueRepo.DequeueMessages(referer, count, queueTable);
+                IEnumerable<IdAndMessage> messages = await this.messageQueueRepo.DequeueMessages(referer, count, queueTable);
 
                 foreach (var message in messages)
                 {
-                    Console.WriteLine($"MessageQueueController.PollMessages(): {message.Id}, Message: {message.Message}");
+                    Console.WriteLine($"MessageQueueController.PollMessages(): MessageID: {message.Id}, Message: {message.Message}");
                 }
 
                 return this.Ok(messages);

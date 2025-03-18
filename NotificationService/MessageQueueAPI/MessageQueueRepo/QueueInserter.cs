@@ -13,7 +13,7 @@ using Visma.Ims.Common.Infrastructure.Tenant;
 /// <summary>
 /// Represents a queue inserter for notification service messages.
 /// </summary>
-public class QueueInserter : QueueInserterBase<EventNameAndMessage>
+public class QueueInserter : QueueInserterBase<NotificationMessage>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="QueueInserter"/> class.

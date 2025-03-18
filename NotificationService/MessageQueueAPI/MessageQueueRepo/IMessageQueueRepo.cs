@@ -8,6 +8,7 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
 /// <summary>
 /// Interface for the message queue repository.
@@ -17,10 +18,10 @@ public interface IMessageQueueRepo
     /// <summary>
     /// Enqueues a message to the message queue.
     /// </summary>
-    /// <param name="jsonString">The JSON string to publish.</param>
+    /// <param name="message">The message object to publish.</param>
     /// <param name="eventName">The event name.</param>
     /// <returns>The id of the inserted message.</returns>
-    Task<long> EnqueueMessage(string jsonString, string eventName);
+    Task<long> EnqueueMessage(NotificationMessage message, string eventName);
 
     /// <summary>
     /// Dequeues messages from the message queue.
@@ -29,7 +30,7 @@ public interface IMessageQueueRepo
     /// <param name="numElements">The number of messages to dequeue.</param>
     /// <param name="queueTableName">The name of the queue table.</param>
     /// <returns>The list of dequeued messages.</returns>
-    Task<List<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName);
+    Task<IEnumerable<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName);
 
     /// <summary>
     /// Marks a message as done.

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Model;
 using NotificationAPI.Model;
 
 public class NotificationPollingService : BackgroundService
@@ -46,8 +47,7 @@ public class NotificationPollingService : BackgroundService
                     return;
                 }
 
-                // Read notifications as List of QueueMessage
-                List<QueueMessage> notifications = await response.Content.ReadFromJsonAsync<List<QueueMessage>>(cancellationToken: cancellationToken);
+                List<IdAndMessage> notifications = await response.Content.ReadFromJsonAsync<List<IdAndMessage>>(cancellationToken: cancellationToken);
 
                 foreach (var notification in notifications)
                 {

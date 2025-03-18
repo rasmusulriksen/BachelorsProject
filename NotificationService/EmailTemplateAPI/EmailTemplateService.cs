@@ -94,7 +94,7 @@ public class EmailTemplateService : IEmailTemplateService
     /// <summary>
     /// Publish a processed email to the outbound email queue
     /// </summary>
-    public async Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, HttpClient client, CancellationToken cancellationToken)
+    public async Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, long messageId, HttpClient client, CancellationToken cancellationToken)
     {
         try
         {
@@ -107,18 +107,18 @@ public class EmailTemplateService : IEmailTemplateService
             if (response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogInformation("Email queued for sending: {ResponseBody}", responseBody);
+                _logger.LogInformation("Email queued for sending: {ResponseBody}, MessageId: {MessageId}", responseBody, messageId);
                 return true;
             }
             else
             {
-                _logger.LogWarning("Failed to queue email for sending: {StatusCode}", response.StatusCode);
+                _logger.LogWarning("Failed to queue email for sending: {StatusCode}, MessageId: {MessageId}", response.StatusCode, messageId);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error publishing processed email to queue");
+            _logger.LogError(ex, "Error publishing processed email to queue for MessageId: {MessageId}", messageId);
             return false;
         }
     }

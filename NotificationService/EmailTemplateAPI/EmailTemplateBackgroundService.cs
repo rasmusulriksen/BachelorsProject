@@ -98,7 +98,7 @@ public class EmailTemplateBackgroundService : BackgroundService
 
             OutboundEmailMessage outboundEmailMessage = await _emailTemplateService.ProcessEmailTemplateAsync(emailActivity, userLanguage, cancellationToken);
 
-            bool publishSuccess = await _emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, client, cancellationToken);
+            bool publishSuccess = await _emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, message.Id, client, cancellationToken);
 
             if (publishSuccess)
             {

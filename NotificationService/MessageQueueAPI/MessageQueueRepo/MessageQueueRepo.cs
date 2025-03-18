@@ -8,11 +8,15 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
+using Newtonsoft.Json.Linq;
 using Visma.Ims.Common.Abstractions.Logging;
-using Visma.Ims.Common.Infrastructure.Tenant;
 using Visma.Ims.Common.Abstractions.Queues;
+using Visma.Ims.Common.Infrastructure.Queues;
+using Visma.Ims.Common.Infrastructure.Tenant;
+using Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
 /// <summary>
 /// Represents the message queue repository.
@@ -20,7 +24,8 @@ using Visma.Ims.Common.Abstractions.Queues;
 public class MessageQueueRepo : IMessageQueueRepo
 {
     private readonly string connectionString;
-    private readonly Dictionary<string, IQueueInserter<EventNameAndMessage>> queueInserters = new Dictionary<string, IQueueInserter<EventNameAndMessage>>();
+    private readonly Dictionary<string, IQueueInserter<NotificationMessage>> queueInserters = new Dictionary<string, IQueueInserter<NotificationMessage>>();
+    private readonly Dictionary<string, IQueueProcessor<JToken>> queueProcessors = new Dictionary<string, IQueueProcessor<JToken>>();
     private readonly ILogFactory logger;
 
     /// <summary>
@@ -35,30 +40,23 @@ public class MessageQueueRepo : IMessageQueueRepo
     }
 
     /// <summary>
-    /// Enqueues a message to the message queue.
+    /// Enqueues a message into the message queue.
     /// </summary>
-    /// <param name="jsonString">The JSON string to publish.</param>
+    /// <param name="message">The message object to publish.</param>
     /// <param name="eventName">The event name.</param>
     /// <returns>The id of the inserted message.</returns>
-    public async Task<long> EnqueueMessage(string jsonString, string eventName)
+    public async Task<long> EnqueueMessage(NotificationMessage message, string eventName)
     {
         string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
 
-        if (!this.queueInserters.TryGetValue(queueName, out IQueueInserter<EventNameAndMessage>? queueInserter))
+        if (!this.queueInserters.TryGetValue(queueName, out IQueueInserter<NotificationMessage>? queueInserter))
         {
             TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
-
             queueInserter = new QueueInserter(queueName, connectionInfo, this.logger);
             this.queueInserters[queueName] = queueInserter;
         }
 
-        var messageContent = new EventNameAndMessage
-        {
-            Content = jsonString,
-            EventName = eventName
-        };
-
-        var ids = await queueInserter.Insert(new[] { messageContent }).ConfigureAwait(false);
+        var ids = await queueInserter.Insert(new[] { message }).ConfigureAwait(false);  
         return ids.First();
     }
 
@@ -68,40 +66,28 @@ public class MessageQueueRepo : IMessageQueueRepo
     /// <param name="callingProcessorId">The id of the calling processor.</param>
     /// <param name="numElements">The number of messages to dequeue.</param>
     /// <param name="queueTableName">The name of the queue table.</param>
-    /// <returns>The list of dequeued messages.</returns>
-    public async Task<List<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
+    /// <returns>The enumeration of dequeued messages.</returns>
+    public async Task<IEnumerable<IdAndMessage>> DequeueMessages(string callingProcessorId, int numElements, string queueTableName)
     {
-        List<IdAndMessage> messages = new List<IdAndMessage>();
-        using (var connection = new NpgsqlConnection(this.connectionString))
+        if (!this.queueProcessors.TryGetValue(queueTableName, out IQueueProcessor<JToken>? queueProcessor))
         {
-            await connection.OpenAsync();
-
-            using (var command = new NpgsqlCommand(
-                "SELECT * FROM queues.take_elements_for_processing(@queueName, @callingProcessorId, @numElements)",
-                connection))
-            {
-                command.Parameters.AddWithValue("queueName", queueTableName);
-                command.Parameters.AddWithValue("callingProcessorId", callingProcessorId);
-                command.Parameters.AddWithValue("numElements", numElements);
-
-                using (var reader = await command.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        var id = reader.GetInt64(0); // First column is id (index 0)
-                        var messageJson = reader.GetString(1); // Second column is message (index 1)
-
-                        messages.Add(new IdAndMessage
-                        {
-                            Id = id,
-                            Message = messageJson
-                        });
-                    }
-                }
-            }
+            TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
+            queueProcessor = new QueueProcessor(queueTableName, connectionInfo, this.logger);
+            this.queueProcessors[queueTableName] = queueProcessor;
         }
 
-        return messages;
+        IEnumerable<(long Id, JToken Element)> results = await queueProcessor.TakeElementsForProcessing(numElements).ConfigureAwait(false);
+
+        return results.Select(result =>
+        {
+            string jsonMessage = result.Element.ToString();
+
+            return new IdAndMessage
+            {
+                Id = result.Id,
+                Message = jsonMessage
+            };
+        });
     }
 
     /// <summary>
@@ -114,22 +100,14 @@ public class MessageQueueRepo : IMessageQueueRepo
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task MarkMessageAsDone(long messageId, string processingResultText, string callingProcessorId, string queueName)
     {
-        using (var connection = new NpgsqlConnection(this.connectionString))
+        if (!this.queueProcessors.TryGetValue(queueName, out IQueueProcessor<JToken>? queueProcessor))
         {
-            await connection.OpenAsync();
-
-            using (var command = new NpgsqlCommand("SELECT queues.mark_element_as_done(@queueName, @messageId, @processingResultText, @callingProcessorId)", connection))
-            {
-                // Add parameters for the function
-                command.Parameters.AddWithValue("queueName", queueName);
-                command.Parameters.AddWithValue("messageId", messageId);
-                command.Parameters.AddWithValue("processingResultText", processingResultText);
-                command.Parameters.AddWithValue("callingProcessorId", callingProcessorId);
-
-                // Execute the command
-                await command.ExecuteNonQueryAsync();
-            }
+            TenantDatabaseConnectionInfoDto connectionInfo = BuildDbConnection(this.connectionString);
+            queueProcessor = new QueueProcessor(queueName, connectionInfo, this.logger);
+            this.queueProcessors[queueName] = queueProcessor;
         }
+
+        await queueProcessor.MakeElementDone(messageId, processingResultText).ConfigureAwait(false);
     }
 
     private static TenantDatabaseConnectionInfoDto BuildDbConnection(string connectionString)

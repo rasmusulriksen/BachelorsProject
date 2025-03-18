@@ -4,7 +4,7 @@
 // Proprietary and confidential.
 // </copyright>
 
-namespace Visma.Ims.NotificationService.MessageQueueAPI;
+namespace Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
 /// <summary>
 /// Represents a message in the message queue.
