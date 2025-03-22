@@ -16,7 +16,8 @@
         "titleBar.activeBackground": "#484101",
         "titleBar.activeForeground": "#e7e7e7",
         "titleBar.inactiveBackground": "#48410199",
-        "titleBar.inactiveForeground": "#e7e7e799"
+        "titleBar.inactiveForeground": "#e7e7e799",
+        "editor.foldBackground": "#ff000000"
     },
     "peacock.color": "#484101"
 }

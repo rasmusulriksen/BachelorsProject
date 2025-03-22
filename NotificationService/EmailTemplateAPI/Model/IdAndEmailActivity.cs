@@ -1,15 +1,15 @@
-// <copyright file="IdAndMessage.cs" company="Visma IMS A/S">
+// <copyright file="IdAndEmailActivity.cs" company="Visma IMS A/S">
 // Copyright (c) Visma IMS A/S. All rights reserved.
 // Unauthorized reproduction of this file, via any medium is strictly prohibited.
 // Proprietary and confidential.
 // </copyright>
 
-namespace Visma.Ims.NotificationAPI.Model;
+namespace Visma.Ims.EmailTemplateAPI.Model;
 
 /// <summary>
 /// Represents a strongly typed business logic model that is parsed from the raw API response model.
 /// </summary>
-public class IdAndMessage
+public class IdAndEmailActivity
 {
     /// <summary>
     /// Gets or sets the id.
@@ -19,5 +19,5 @@ public class IdAndMessage
     /// <summary>
     /// Gets or sets the message.
     /// </summary>
-    required public Message Message { get; set; }
+    required public EmailActivity EmailActivity { get; set; }
 }

@@ -79,7 +79,7 @@ public class MessageQueueController : ControllerBase
     /// </summary>
     /// <param name="id">The id of the message to mark as done.</param>
     /// <returns>The action result.</returns>
-    [HttpPost("done/{id}")]
+    [HttpGet("done/{id}")]
     public async Task<IActionResult> MarkMessageAsDone(long id)
     {
         string referer = this.GetReferer();

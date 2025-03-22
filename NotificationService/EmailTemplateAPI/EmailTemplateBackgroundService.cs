@@ -1,113 +1,147 @@
-using System.Text.Json;
+// <copyright file="EmailTemplateBackgroundService.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
+
+namespace Visma.Ims.EmailTemplateAPI;
+
 using System.Text.Json.Serialization;
-using EmailTemplateAPI.Handlebars;
+using Visma.Ims.Common.Abstractions.HostedService;
+using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.EmailTemplateAPI.Handlebars;
+using Visma.Ims.EmailTemplateAPI.Model;
+using Visma.Ims.NotificationAPI.Model;
+using Newtonsoft.Json;
 
-public class EmailTemplateBackgroundService : BackgroundService
+/// <summary>
+/// Background service for processing email templates.
+/// </summary>
+public class EmailTemplateBackgroundService : IRecurringBackgroundService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<EmailTemplateBackgroundService> _logger;
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
-    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly ILogFactory logger;
+    private readonly IHttpClientFactory httpClientFactory;
+    private readonly IEmailTemplateService emailTemplateService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EmailTemplateBackgroundService"/> class.
+    /// </summary>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="hostEnvironment">The host environment.</param>
+    /// <param name="emailTemplateService">The email template service.</param>
     public EmailTemplateBackgroundService(
-        IHttpClientFactory httpClientFactory, 
-        ILogger<EmailTemplateBackgroundService> logger, 
+        IHttpClientFactory httpClientFactory,
+        ILogFactory logger,
         IHostEnvironment hostEnvironment,
         IEmailTemplateService emailTemplateService)
     {
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-        _emailTemplateService = emailTemplateService;
-        
+        this.httpClientFactory = httpClientFactory;
+        this.logger = logger;
+        this.emailTemplateService = emailTemplateService;
+
         // Register Handlebars helpers and partials
         HandlebarsHelperExtensions.RegisterAllHelpersAndPartials(hostEnvironment, logger);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    /// <inheritdoc/>
+    public string ServiceName => "EmailTemplateBackgroundService";
+
+    /// <inheritdoc/>
+    public virtual TimeSpan RunEvery => TimeSpan.FromSeconds(10);
+
+    /// <inheritdoc/>
+    public virtual TimeSpan CancelAfter => TimeSpan.FromSeconds(56);
+
+    /// <inheritdoc/>
+    public async Task DoWork(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("EmailTemplatePollingService started.");
+        this.logger.Log().Information("EmailTemplatePollingService started.");
 
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("MessageQueueClient");
-                
-                List<QueueMessage> messages = await PollForNewMessagesAsync(client, cancellationToken);
-                
-                if (!messages.Any())
+                var client = this.httpClientFactory.CreateClient("MessageQueueClient");
+
+                List<IdAndEmailActivity> emailActivities = await this.PollForNewMessagesAsync(client, cancellationToken);
+
+                if (!emailActivities.Any())
                 {
-                    await Task.Delay(_pollingInterval, cancellationToken);
+                    await Task.Delay(this.RunEvery, cancellationToken);
                     continue;
                 }
 
-                foreach (QueueMessage message in messages)
+                foreach (IdAndEmailActivity emailActivity in emailActivities)
                 {
-                    try 
+                    try
                     {
-                        await ProcessMessageAsync(message, client, cancellationToken);
+                        await this.ProcessEmailActivityAsync(emailActivity, client, cancellationToken);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing message {MessageId}", message.Id);
+                        this.logger.Log().Error(ex, "Error processing email activity {EmailActivityId}", emailActivity.Id);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred in email template polling service.");
+                this.logger.Log().Error(ex, "Error occurred in email template polling service.");
             }
 
-            await Task.Delay(_pollingInterval, cancellationToken);
+            await Task.Delay(this.RunEvery, cancellationToken);
         }
 
-        _logger.LogInformation("Email template polling service is stopping.");
+        this.logger.Log().Information("Email template polling service is stopping.");
     }
 
-    private async Task<List<QueueMessage>?> PollForNewMessagesAsync(HttpClient client, CancellationToken cancellationToken)
+    private async Task<List<IdAndEmailActivity>?> PollForNewMessagesAsync(HttpClient client, CancellationToken cancellationToken)
     {
         try
         {
             client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");
-            
+
             var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("No new emails or processing failed: {StatusCode}", response.StatusCode);
+                this.logger.Log().Warning("No new emails or processing failed: {StatusCode}", response.StatusCode);
                 return null;
             }
 
-            return await response.Content.ReadFromJsonAsync<List<QueueMessage>>(cancellationToken: cancellationToken);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var idAndJObjects = JsonConvert.DeserializeObject<List<IdAndJObject>>(responseContent);
+            var emailActivities = idAndJObjects?.Select(j => j.ToIdAndEmailActivity()).ToList();
+
+            return emailActivities;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error polling for new messages");
+            this.logger.Log().Error(ex, "Error polling for new messages");
             return null;
         }
     }
 
-    private async Task ProcessMessageAsync(QueueMessage message, HttpClient client, CancellationToken cancellationToken)
+    private async Task ProcessEmailActivityAsync(IdAndEmailActivity emailActivity, HttpClient client, CancellationToken cancellationToken)
     {
         // Default language - could be extracted from message or user preferences
-        var userLanguage = "en";  
+        var userLanguage = "en";
 
         try
         {
-            EmailActivity emailActivity = JsonSerializer.Deserialize<EmailActivity>(message.Message);   
 
-            OutboundEmailMessage outboundEmailMessage = await _emailTemplateService.ProcessEmailTemplateAsync(emailActivity, userLanguage, cancellationToken);
+            OutboundEmailMessage outboundEmailMessage = await this.emailTemplateService.ProcessEmailTemplateAsync(emailActivity.EmailActivity, userLanguage, cancellationToken);
 
-            bool publishSuccess = await _emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, message.Id, client, cancellationToken);
+            bool publishSuccess = await this.emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, emailActivity.Id, client, cancellationToken);
 
             if (publishSuccess)
             {
-                await MarkMessageAsDoneAsync(client, message.Id, cancellationToken);
+                await this.MarkMessageAsDoneAsync(client, emailActivity.Id, cancellationToken);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing message {MessageId}", message.Id);
+            this.logger.Log().Error(ex, "Error processing email activity {EmailActivityId}", emailActivity.Id);
             throw;
         }
     }
@@ -116,89 +150,68 @@ public class EmailTemplateBackgroundService : BackgroundService
     {
         try
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");   
-            
+            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");
+
             await client.GetAsync(
                 $"http://localhost:5204/api/messagequeue/done/{messageId}", cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error marking message {MessageId} as done", messageId);
+            this.logger.Log().Error(ex, "Error marking message {MessageId} as done", messageId);
             throw;
         }
     }
 
+    /// <summary>
+    /// Represents a message from the message queue.
+    /// </summary>
     public class QueueMessage
     {
+        /// <summary>
+        /// Gets or sets the ID of the message.
+        /// </summary>
+        [JsonPropertyName("id")]
         public long Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the message.
+        /// </summary>
+        [JsonPropertyName("message")]
         public string Message { get; set; }
     }
 
-    public class EmailActivity
-    {
-        [JsonPropertyName("activityType")]
-        public string ActivityType { get; set; }
-
-        [JsonPropertyName("jsonData")]
-        public JsonData JsonData { get; set; }
-
-        [JsonPropertyName("userName")]
-        public string UserName { get; set; }
-
-        [JsonPropertyName("toEmail")]
-        public string ToEmail { get; set; }
-
-        [JsonPropertyName("fromEmail")]
-        public string FromEmail { get; set; }
-
-        [JsonPropertyName("linksEnabled")]
-        public bool LinksEnabled { get; set; }
-    }
-
-    public class JsonData
-    {
-        [JsonPropertyName("docRecordNodeRef")]
-        public string DocRecordNodeRef { get; set; }
-        
-        [JsonPropertyName("modifierDisplayName")]
-        public string ModifierDisplayName { get; set; }
-        
-        [JsonPropertyName("modifier")]
-        public string Modifier { get; set; }
-        
-        [JsonPropertyName("caseId")]
-        public string CaseId { get; set; }
-        
-        [JsonPropertyName("caseTitle")]
-        public string CaseTitle { get; set; }
-        
-        [JsonPropertyName("docTitle")]
-        public string DocTitle { get; set; }
-        
-        [JsonPropertyName("parentTitle")]
-        public string ParentTitle { get; set; }
-        
-        [JsonPropertyName("parentType")]
-        public string ParentType { get; set; }
-        
-        [JsonPropertyName("parentRef")]
-        public string ParentRef { get; set; }
-    }
-    
+    /// <summary>
+    /// Represents an outbound email message.
+    /// </summary>
     public class OutboundEmailMessage
     {
+        /// <summary>
+        /// Gets or sets the email address of the recipient.
+        /// </summary>
         [JsonPropertyName("toEmail")]
         public string ToEmail { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the email address of the sender.
+        /// </summary>
         [JsonPropertyName("fromEmail")]
         public string FromEmail { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the subject of the email.
+        /// </summary>
         [JsonPropertyName("subject")]
         public string Subject { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the HTML body of the email.
+        /// </summary>
         [JsonPropertyName("htmlBody")]
         public string HtmlBody { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the text body of the email.
+        /// </summary>
         [JsonPropertyName("textBody")]
         public string TextBody { get; set; }
     }
