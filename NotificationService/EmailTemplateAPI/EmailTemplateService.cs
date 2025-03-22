@@ -43,7 +43,7 @@ public interface IEmailTemplateService
     /// <param name="userLanguage">The language of the user.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The processed email message.</returns>
-    Task<OutboundEmailMessage> ProcessEmailTemplateAsync(EmailActivity emailActivity, string userLanguage, CancellationToken cancellationToken);
+    Task<OutboundEmail> ProcessEmailTemplateAsync(EmailActivity emailActivity, string userLanguage, CancellationToken cancellationToken);
 
     /// <summary>
     /// Publish a processed email to the outbound email queue.
@@ -53,7 +53,7 @@ public interface IEmailTemplateService
     /// <param name="client">The HTTP client.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if the email was published successfully, false otherwise.</returns>
-    Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, long messageId, HttpClient client, CancellationToken cancellationToken);
+    Task<bool> PublishProcessedEmailAsync(OutboundEmail email, long messageId, HttpClient client, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -107,7 +107,7 @@ public class EmailTemplateService : IEmailTemplateService
     /// <param name="userLanguage">The language of the user.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The processed email message.</returns>
-    public async Task<OutboundEmailMessage> ProcessEmailTemplateAsync(EmailActivity emailActivity, string userLanguage, CancellationToken cancellationToken)
+    public async Task<OutboundEmail> ProcessEmailTemplateAsync(EmailActivity emailActivity, string userLanguage, CancellationToken cancellationToken)
     {
         // Get template name based on activity type
         string templateName = GetEmailTemplateNameFromEventName(emailActivity.ActivityType);
@@ -146,7 +146,7 @@ public class EmailTemplateService : IEmailTemplateService
         }
 
         // Create the email message
-        var outboundEmailMessage = new OutboundEmailMessage
+        var outboundEmailMessage = new OutboundEmail
         {
             ToEmail = emailActivity.ToEmail,
             FromEmail = emailActivity.FromEmail,
@@ -166,7 +166,7 @@ public class EmailTemplateService : IEmailTemplateService
     /// <param name="client">The HTTP client.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if the email was published successfully, false otherwise.</returns>
-    public async Task<bool> PublishProcessedEmailAsync(OutboundEmailMessage email, long messageId, HttpClient client, CancellationToken cancellationToken)
+    public async Task<bool> PublishProcessedEmailAsync(OutboundEmail email, long messageId, HttpClient client, CancellationToken cancellationToken)
     {
         try
         {

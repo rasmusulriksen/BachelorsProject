@@ -130,7 +130,7 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
         try
         {
 
-            OutboundEmailMessage outboundEmailMessage = await this.emailTemplateService.ProcessEmailTemplateAsync(emailActivity.EmailActivity, userLanguage, cancellationToken);
+            OutboundEmail outboundEmailMessage = await this.emailTemplateService.ProcessEmailTemplateAsync(emailActivity.EmailActivity, userLanguage, cancellationToken);
 
             bool publishSuccess = await this.emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, emailActivity.Id, client, cancellationToken);
 
@@ -160,59 +160,5 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
             this.logger.Log().Error(ex, "Error marking message {MessageId} as done", messageId);
             throw;
         }
-    }
-
-    /// <summary>
-    /// Represents a message from the message queue.
-    /// </summary>
-    public class QueueMessage
-    {
-        /// <summary>
-        /// Gets or sets the ID of the message.
-        /// </summary>
-        [JsonPropertyName("id")]
-        public long Id { get; set; }
-
-        /// <summary>
-        /// Gets or sets the message.
-        /// </summary>
-        [JsonPropertyName("message")]
-        public string Message { get; set; }
-    }
-
-    /// <summary>
-    /// Represents an outbound email message.
-    /// </summary>
-    public class OutboundEmailMessage
-    {
-        /// <summary>
-        /// Gets or sets the email address of the recipient.
-        /// </summary>
-        [JsonPropertyName("toEmail")]
-        public string ToEmail { get; set; }
-
-        /// <summary>
-        /// Gets or sets the email address of the sender.
-        /// </summary>
-        [JsonPropertyName("fromEmail")]
-        public string FromEmail { get; set; }
-
-        /// <summary>
-        /// Gets or sets the subject of the email.
-        /// </summary>
-        [JsonPropertyName("subject")]
-        public string Subject { get; set; }
-
-        /// <summary>
-        /// Gets or sets the HTML body of the email.
-        /// </summary>
-        [JsonPropertyName("htmlBody")]
-        public string HtmlBody { get; set; }
-
-        /// <summary>
-        /// Gets or sets the text body of the email.
-        /// </summary>
-        [JsonPropertyName("textBody")]
-        public string TextBody { get; set; }
     }
 }

@@ -1,97 +1,106 @@
+// <copyright file="EmailSenderBackgroundService.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
+
+namespace Visma.Ims.EmailSenderAPI;
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+using Visma.Ims.Common.Abstractions.HostedService;
+using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.EmailSenderAPI.Model;
+using Visma.Ims.NotificationAPI.Model;
 
-public class EmailSenderBackgroundService : BackgroundService
+/// <summary>
+/// Represents the email sender background service.
+/// </summary>
+public class EmailSenderBackgroundService : IRecurringBackgroundService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<EmailSenderBackgroundService> _logger;
-    private readonly IEmailSenderService _emailSenderService;
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    private readonly IHttpClientFactory httpClientFactory;
+    private readonly ILogFactory logger;
+    private readonly IEmailSenderService emailSenderService;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EmailSenderBackgroundService"/> class.
+    /// </summary>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="emailSenderService">The email sender service.</param>
     public EmailSenderBackgroundService(
         IHttpClientFactory httpClientFactory,
-        ILogger<EmailSenderBackgroundService> logger,
+        ILogFactory logger,
         IEmailSenderService emailSenderService)
     {
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-        _emailSenderService = emailSenderService;
+        this.httpClientFactory = httpClientFactory;
+        this.logger = logger;
+        this.emailSenderService = emailSenderService;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    /// <inheritdoc/>
+    public string ServiceName => "EmailSenderBackgroundService";
+
+    /// <inheritdoc/>
+    public virtual TimeSpan RunEvery => TimeSpan.FromSeconds(10);
+
+    /// <inheritdoc/>
+    public virtual TimeSpan CancelAfter => TimeSpan.FromSeconds(56);
+
+    /// <summary>
+    /// Executes the background service.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task DoWork(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("EmailSenderBackgroundService started.");
+        this.logger.Log().Information("EmailSenderBackgroundService started.");
 
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("MessageQueueClient");
-
-                client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5089");
+                var client = this.httpClientFactory.CreateClient("MessageQueueClient");
 
                 var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("No new emails or processing failed: {StatusCode}", response.StatusCode);
+                    this.logger.Log().Warning("No new emails or processing failed: {StatusCode}", response.StatusCode);
                 }
-                else
+
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                var idAndJObjects = JsonConvert.DeserializeObject<List<IdAndJObject>>(responseContent);
+                var outboundEmails = idAndJObjects.Select(idAndJObject => idAndJObject.ToIdAndOutboundEmail()).ToList();
+
+                foreach (var outboundEmail in outboundEmails)
                 {
-                    var messages = await response.Content.ReadFromJsonAsync<List<QueueMessage>>(cancellationToken: cancellationToken);
-
-                    foreach (var message in messages)
+                    try
                     {
-                        try
-                        {
-                            var emailToSend = JsonSerializer.Deserialize<OutboundEmailMessage>(message.Message);
+                        this.logger.Log().Information("Processing email: Subject={Subject}, To={ToEmail}", outboundEmail.OutboundEmail.Subject, outboundEmail.OutboundEmail.ToEmail);
 
-                            _logger.LogInformation("Processing email: Subject={Subject}, To={ToEmail}",
-                                emailToSend.Subject, emailToSend.ToEmail);
+                        await this.emailSenderService.SendEmailAsync(outboundEmail.OutboundEmail.Subject, outboundEmail.OutboundEmail.HtmlBody);
 
-                            await _emailSenderService.SendEmailAsync(emailToSend.Subject, emailToSend.HtmlBody);
+                        this.logger.Log().Information("Email sent successfully");
 
-                            _logger.LogInformation("Email sent successfully");
-
-                            // Mark as done
-                            await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{message.Id}", cancellationToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error processing email message {MessageId}", message.Id);
-                        }
+                        // Mark as done
+                        await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{outboundEmail.Id}", cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        this.logger.Log().Error(ex, "Error processing email message {MessageId}", outboundEmail.Id);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while polling for or processing emails.");
+                this.logger.Log().Error(ex, "Error occurred while polling for or processing emails.");
             }
 
-            await Task.Delay(_pollingInterval, cancellationToken);
+            await Task.Delay(this.RunEvery, cancellationToken);
         }
 
-        _logger.LogInformation("Email sender polling service is stopping.");
+        this.logger.Log().Information("Email sender polling service is stopping.");
     }
-}
-
-// Models needed for the service
-public class QueueMessage
-{
-    public long Id { get; set; }
-    public string Message { get; set; }
-
-}
-public record OutboundEmailMessage
-{
-    [JsonPropertyName("toEmail")]
-    public string ToEmail { get; set; }
-    [JsonPropertyName("fromEmail")]
-    public string FromEmail { get; set; }
-    [JsonPropertyName("subject")]
-    public string Subject { get; set; }
-    [JsonPropertyName("htmlBody")]
-    public string HtmlBody { get; set; }
-    [JsonPropertyName("textBody")]
-    public string TextBody { get; set; }
 }

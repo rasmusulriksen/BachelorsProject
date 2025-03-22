@@ -33,8 +33,6 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
         this.notificationPreferencesConfig = configuration.GetSection("NotificationPreferences")
             .Get<NotificationPreferencesConfig>()
             ?? throw new InvalidOperationException("NotificationPreferences configuration not found");
-
-        this.logger.Log().Information("Loaded NotificationPreferences configuration");
     }
 
     /// <inheritdoc/>
@@ -42,7 +40,6 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         container.RegisterInstance(this.notificationPreferencesConfig);
         container.RegisterSingleton<INotificationService, NotificationService>();
-        this.logger.Log().Information("Registered NotificationPreferences configuration");
     }
 
     /// <inheritdoc/>
@@ -50,14 +47,12 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         services.AddHttpClient("MessageQueueClient", client =>
         {
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
         });
-
+        
         services.AddHttpClient("InAppNotificationClient", client =>
         {
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
         });
-
-        this.logger.Log().Information("Configured HTTP clients");
     }
 }

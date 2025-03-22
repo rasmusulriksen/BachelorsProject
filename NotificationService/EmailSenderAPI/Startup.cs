@@ -6,12 +6,12 @@
 // </copyright>
 // ------------------------------------------------------------------------------
 
-namespace Visma.Ims.EmailTemplateAPI;
+namespace Visma.Ims.EmailSenderAPI;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleInjector;
-using Visma.Ims.EmailTemplateAPI.Configuration;
+using Visma.Ims.EmailSenderAPI.Configuration;
 using Visma.Ims.Common.Infrastructure;
 
 /// <summary>

@@ -6,7 +6,7 @@
 // </copyright>
 // ------------------------------------------------------------------------------
 
-namespace Visma.Ims.EmailTemplateAPI.Configuration;
+namespace Visma.Ims.EmailSenderAPI.Configuration;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -39,8 +39,7 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     /// <inheritdoc/>
     protected override void RegisterDependencies(Container container)
     {
-        container.RegisterSingleton<IEmailTemplateService, EmailTemplateService>();
-        container.RegisterSingleton<IEmailTemplateRepository, EmailTemplateRepository>();
+        container.RegisterSingleton<IEmailSenderService, EmailSenderService>();
     }
 
     /// <inheritdoc/>
@@ -48,7 +47,7 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         services.AddHttpClient("MessageQueueClient", client =>
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");
+            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5089");
         });
     }
 }
