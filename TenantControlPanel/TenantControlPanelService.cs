@@ -49,12 +49,12 @@ public class TenantControlPanelService
 
             // 3. Create schema "notification" in the new database
             // 4. Create table "notification.notification_preferences" and "notification.notification" in the new database
-            await ExecuteSqlScriptOnTenantDatabase(tenantConnectionString, "Onboard/create_notification_schema.sql", request.TenantIdentifier);
+            await ExecuteSqlScriptOnTenantDatabaseWithQuotedTenantIdentifier(tenantConnectionString, "Onboard/create_notification_schema.sql", request.TenantIdentifier);
             this.logger.Log().Information($"Created notification schema and tables for tenant: {request.TenantIdentifier}");
 
             // 5. Create schema "queues" in the new database
             // 6. Create queue tables and functions in the new database
-            await ExecuteSqlScriptOnTenantDatabase(tenantConnectionString, "Onboard/create_queues_schema.sql", request.TenantIdentifier);
+            await ExecuteSqlScriptOnTenantDatabaseWithoutQuotedTenantIdentifier(tenantConnectionString, "Onboard/create_queues_schema.sql", request.TenantIdentifier);
             this.logger.Log().Information($"Created queues schema and tables for tenant: {request.TenantIdentifier}");
 
             this.logger.Log().Information($"Successfully completed tenant onboarding process for tenant: {request.TenantIdentifier}");
@@ -73,7 +73,7 @@ public class TenantControlPanelService
             this.logger.Log().Information($"Starting tenant teardown process for tenant: {tenantIdentifier}");
 
             // 1. Delete the tenant record from the tenant control panel database first
-            await ExecuteSqlScriptOnTenantDatabase(tenantControlPanelConnectionString, "Teardown/teardown_tenant_record.sql", tenantIdentifier);
+            await ExecuteSqlScriptOnTenantDatabaseWithQuotedTenantIdentifier(tenantControlPanelConnectionString, "Teardown/teardown_tenant_record.sql", tenantIdentifier);
             this.logger.Log().Information($"Deleted tenant record for tenant: {tenantIdentifier}");
 
             // 2. Drop the tenant's database - this needs to be done in a separate connection without a transaction
@@ -146,12 +146,29 @@ public class TenantControlPanelService
         }
     }
 
-    private async Task ExecuteSqlScriptOnTenantDatabase(string connectionString, string scriptName, string tenantIdentifier)
+    // When the tenantIdentifier is used to reference database values (for instance in a WHERE clause), this method is used
+    private async Task ExecuteSqlScriptOnTenantDatabaseWithQuotedTenantIdentifier(string connectionString, string scriptName, string tenantIdentifier)
     {
         // Read the SQL script
         string sqlScript = await File.ReadAllTextAsync(Path.Combine("SQL", scriptName));
 
         sqlScript = sqlScript.Replace("@TenantIdentifier", $"'{tenantIdentifier}'");
+
+        // Execute the script on the tenant database
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        using var command = new NpgsqlCommand(sqlScript, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    // When the tenantIdentifier is merged into db function names for onboarding, this method is used
+    private async Task ExecuteSqlScriptOnTenantDatabaseWithoutQuotedTenantIdentifier(string connectionString, string scriptName, string tenantIdentifier)
+    {
+        // Read the SQL script
+        string sqlScript = await File.ReadAllTextAsync(Path.Combine("SQL", scriptName));
+
+        sqlScript = sqlScript.Replace("@TenantIdentifier", tenantIdentifier);
 
         // Execute the script on the tenant database
         using var connection = new NpgsqlConnection(connectionString);
