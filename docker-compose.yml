@@ -51,31 +51,31 @@ services:
   #     - local_network
 
   # Databases
-  postgres-client1:
+  postgres-tenant-service-databases:
     image: postgres:latest
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: client1
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data1:/var/lib/postgresql/data
+      - postgres_data_tenant_service_databases:/var/lib/postgresql/data
     networks:
       - local_network
 
-  postgres-client2:
+  postgres-tenant-controlpanel:
     image: postgres:latest
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: client2
+      POSTGRES_DB: tenant-controlpanel
     ports:
-      - "5431:5432"
+      - "5438:5432"
     volumes:
-      - postgres_data2:/var/lib/postgresql/data
+      - postgres_data_tenant_controlpanel:/var/lib/postgresql/data
     networks:
       - local_network
+      
 
   # Utilities
   smtp4dev:
@@ -113,15 +113,16 @@ services:
     volumes:
       - keycloak_data:/opt/keycloak/data
 
+  
+
 # Networks
 networks:
   local_network:
     driver: bridge
 
 # Volumes
-# I accidenty deleted the old external volumes, so I need to populate these databases with data again. It should only really be an issue for the keycloak database.
 volumes:
   smtp4dev_data:
-  postgres_data1:
-  postgres_data2:
+  postgres_data_tenant_service_databases:
+  postgres_data_tenant_controlpanel:
   keycloak_data:
