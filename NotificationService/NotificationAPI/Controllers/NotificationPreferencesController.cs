@@ -38,9 +38,9 @@ public class NotificationPreferencesController : ControllerBase
     /// <param name="preferenceToLookup">The preference to lookup.</param>
     /// <returns>The notification preference.</returns>
     [HttpGet("{username}/{preferenceToLookup}")]
-    public async Task<IActionResult> GetByUsername(string username, string preferenceToLookup)
+    public async Task<IActionResult> GetByUsername(string username, string preferenceToLookup, [FromHeader(Name = "X-Tenant-Identifier")] string tenantIdentifier)
     {
-        var preference = await this.service.Get1BoolByUsernameAsync(username, preferenceToLookup);
+        var preference = await this.service.Get1BoolByUsernameAsync(username, preferenceToLookup, tenantIdentifier);
         return this.Ok(preference);
     }
 }

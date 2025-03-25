@@ -50,10 +50,10 @@ public interface IEmailTemplateService
     /// </summary>
     /// <param name="email">The email to publish.</param>
     /// <param name="messageId">The ID of the message.</param>
-    /// <param name="client">The HTTP client.</param>
+    /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if the email was published successfully, false otherwise.</returns>
-    Task<bool> PublishProcessedEmailAsync(OutboundEmail email, long messageId, HttpClient client, CancellationToken cancellationToken);
+    Task<bool> PublishProcessedEmailAsync(OutboundEmail email, long messageId, TenantInfo tenantInfo, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -64,6 +64,7 @@ public class EmailTemplateService : IEmailTemplateService
     private readonly IEmailTemplateRepository repository;
     private readonly ILogger<EmailTemplateService> logger;
     private readonly IHostEnvironment hostEnvironment;
+    private readonly IHttpClientFactory httpClientFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EmailTemplateService"/> class.
@@ -71,14 +72,17 @@ public class EmailTemplateService : IEmailTemplateService
     /// <param name="repository">The repository for the email templates.</param>
     /// <param name="logger">The logger for the email templates.</param>
     /// <param name="hostEnvironment">The host environment for the email templates.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     public EmailTemplateService(
         IEmailTemplateRepository repository,
         ILogger<EmailTemplateService> logger,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        IHttpClientFactory httpClientFactory)
     {
         this.repository = repository;
         this.logger = logger;
         this.hostEnvironment = hostEnvironment;
+        this.httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -163,34 +167,50 @@ public class EmailTemplateService : IEmailTemplateService
     /// </summary>
     /// <param name="email">The email to publish.</param>
     /// <param name="messageId">The ID of the message.</param>
-    /// <param name="client">The HTTP client.</param>
+    /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>True if the email was published successfully, false otherwise.</returns>
-    public async Task<bool> PublishProcessedEmailAsync(OutboundEmail email, long messageId, HttpClient client, CancellationToken cancellationToken)
+    public async Task<bool> PublishProcessedEmailAsync(OutboundEmail email, long messageId, TenantInfo tenantInfo, CancellationToken cancellationToken)
     {
         try
         {
-            string publishUrl = "http://localhost:5204/api/messagequeue/publish/EmailTemplateHasBeenPopulated";
+            var client = this.httpClientFactory.CreateClient("MessageQueueClient");
 
-            var publishContent = new StringContent(JsonSerializer.Serialize(email), Encoding.UTF8, "application/json");
+            string url = $"{tenantInfo.TenantUrl}/messagequeue/publish/EmailTemplateHasBeenPopulated";
+            this.logger.LogInformation("Publishing email to {PublishUrl} for tenant {TenantIdentifier}", url, tenantInfo.TenantIdentifier);
 
-            var response = await client.PostAsync(publishUrl, publishContent, cancellationToken);
+            var requestBody = new StringContent(JsonSerializer.Serialize(email), Encoding.UTF8, "application/json");
+
+            // Create a new HttpRequestMessage to set the custom header
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = requestBody
+            };
+
+            // Add the X-Tenant-Identifier header to the request
+            request.Headers.Add("X-Tenant-Identifier", tenantInfo.TenantIdentifier);
+
+            // Send the request
+            var response = await client.SendAsync(request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                this.logger.LogInformation("Email queued for sending: {ResponseBody}, MessageId: {MessageId}", responseBody, messageId);
+                this.logger.LogInformation("Email queued for sending: {ResponseBody}, MessageId: {MessageId}, Tenant: {TenantIdentifier}",
+                    responseBody, messageId, tenantInfo.TenantIdentifier);
                 return true;
             }
             else
             {
-                this.logger.LogWarning("Failed to queue email for sending: {StatusCode}, MessageId: {MessageId}", response.StatusCode, messageId);
+                this.logger.LogWarning("Failed to queue email for sending: {StatusCode}, MessageId: {MessageId}, Tenant: {TenantIdentifier}",
+                    response.StatusCode, messageId, tenantInfo.TenantIdentifier);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            this.logger.LogError(ex, "Error publishing processed email to queue for MessageId: {MessageId}", messageId);
+            this.logger.LogError(ex, "Error publishing processed email to queue for MessageId: {MessageId}, Tenant: {TenantIdentifier}",
+                messageId, tenantInfo.TenantIdentifier);
             return false;
         }
     }

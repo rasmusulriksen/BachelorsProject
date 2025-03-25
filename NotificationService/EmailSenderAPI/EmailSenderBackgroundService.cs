@@ -63,7 +63,7 @@ public class EmailSenderBackgroundService : IRecurringBackgroundService
             {
                 var client = this.httpClientFactory.CreateClient("MessageQueueClient");
 
-                var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
+                var response = await client.GetAsync("http://localhost:5170/messagequeue/poll", cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -85,7 +85,7 @@ public class EmailSenderBackgroundService : IRecurringBackgroundService
                         this.logger.Log().Information("Email sent successfully");
 
                         // Mark as done
-                        await client.GetAsync($"http://localhost:5204/api/messagequeue/done/{outboundEmail.Id}", cancellationToken);
+                        await client.GetAsync($"http://localhost:5204/messagequeue/done/{outboundEmail.Id}", cancellationToken);
                     }
                     catch (Exception ex)
                     {

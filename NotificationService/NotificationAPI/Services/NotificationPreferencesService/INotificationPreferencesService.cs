@@ -19,7 +19,7 @@ public interface INotificationPreferencesService
     /// <param name="username">The username of the user to get the preference for.</param>
     /// <param name="preferenceToLookup">The preference to lookup.</param>
     /// <returns>The notification preference.</returns>
-    Task<bool> Get1BoolByUsernameAsync(string username, string preferenceToLookup);
+    Task<bool> Get1BoolByUsernameAsync(string username, string preferenceToLookup, string tenantIdentifier);
 
     /// <summary>
     /// Gets the entire notification preference by username.

@@ -12,5 +12,5 @@ public interface INotificationPreferencesRepository
     /// </summary>
     /// <param name="username">The username to retrieve preferences for.</param>
     /// <returns>The notification preferences or null if not found.</returns>
-    Task<NotificationPreference> GetByUsernameAsync(string username);
+    Task<NotificationPreference> GetByUsernameAsync(string username, string tenantIdentifier);
 } 

@@ -15,6 +15,7 @@ using SimpleInjector;
 using Visma.Ims.Common.Abstractions.Logging;
 using Visma.Ims.Common.Infrastructure.DependencyInjection;
 using Visma.Ims.Common.Infrastructure.Logging;
+using Visma.Ims.MessageQueueAPI.Configuration;
 using Visma.Ims.NotificationService.MessageQueueAPI;
 
 /// <summary>
@@ -43,10 +44,11 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     /// <inheritdoc/>
     protected override void RegisterDependencies(Container container)
     {
-        // Register the MessageQueueRepo with its connection string
-        container.RegisterInstance<IMessageQueueRepo>(new MessageQueueRepo(this.connectionString, this.logger));
+        container.Register<ConnectionStringFactory>(Lifestyle.Scoped);
+        container.Register<IMessageQueueRepo, MessageQueueRepo>(Lifestyle.Scoped);
 
-        this.logger.Log().Information("Registered MessageQueueRepo with connection string");
+        this.logger.Log().Information("Registered dependency: ConnectionStringFactory");
+        this.logger.Log().Information("Registered dependency: IMessageQueueRepo");
     }
 
     /// <inheritdoc/>

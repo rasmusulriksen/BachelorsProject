@@ -3,6 +3,7 @@ namespace Visma.Ims.NotificationAPI.Repositories;
 using System.Data;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using Visma.Ims.NotificationAPI.Configuration;
 using Visma.Ims.NotificationAPI.Model;
 
 /// <summary>
@@ -10,21 +11,21 @@ using Visma.Ims.NotificationAPI.Model;
 /// </summary>
 public class NotificationPreferencesRepository : INotificationPreferencesRepository
 {
-    private readonly string connectionString;
+    private readonly ConnectionStringFactory connectionStringFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NotificationPreferencesRepository"/> class.
     /// </summary>
     /// <param name="configuration">The configuration.</param>
-    public NotificationPreferencesRepository(IConfiguration configuration)
+    public NotificationPreferencesRepository(ConnectionStringFactory connectionStringFactory)
     {
-        this.connectionString = configuration.GetConnectionString("ConnectionString");
+        this.connectionStringFactory = connectionStringFactory;
     }
 
     /// <inheritdoc/>
-    public async Task<NotificationPreference> GetByUsernameAsync(string username)
+    public async Task<NotificationPreference> GetByUsernameAsync(string username, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         using var command = new NpgsqlCommand(

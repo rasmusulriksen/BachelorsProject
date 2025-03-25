@@ -31,7 +31,7 @@ public class NotificationPreferencesService : INotificationPreferencesService
     /// <param name="username">The username of the user to get the preference for.</param>
     /// <param name="preferenceToLookup">The preference to lookup.</param>
     /// <returns>The notification preference.</returns>
-    public async Task<bool> Get1BoolByUsernameAsync(string username, string preferenceToLookup)
+    public async Task<bool> Get1BoolByUsernameAsync(string username, string preferenceToLookup, string tenantIdentifier)
     {
         NotificationPreference preference = await this.repository.GetByUsernameAsync(username);
 

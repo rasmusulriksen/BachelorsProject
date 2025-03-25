@@ -48,7 +48,7 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         services.AddHttpClient("MessageQueueClient", client =>
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");
+            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298"); // This tells the MessageQueueAPI which service is calling it. With this, it can map the caller to a queue name/topic (db table).
         });
     }
 }

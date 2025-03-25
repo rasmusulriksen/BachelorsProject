@@ -80,7 +80,7 @@ public class NotificationService : INotificationService
         await this.repository.CreateAsync(notification, tenantIdentifier);
 
         // 3. Publish NotificationInitialized event to message queue
-        await this.PublishToMessageQueue(notificationDTO, cancellationToken);
+        await this.PublishToMessageQueue(notificationDTO, tenantIdentifier, cancellationToken);
 
         // Set creation timestamp if not provided
         if (notification.PostDate == 0)
@@ -160,7 +160,6 @@ public class NotificationService : INotificationService
     {
         try
         {
-            // Now proceed with email sending as before
             var emailNotification = new EmailNotification(
                 message.ActivityType,
                 message.JsonData,
@@ -170,14 +169,20 @@ public class NotificationService : INotificationService
                 linksEnabled);
 
             var client = this.httpClientFactory.CreateClient("MessageQueueClient");
-            string url = "http://localhost:5204/api/messagequeue/publish/EmailTemplateShouldBePopulated";
 
-            var emailContent = new StringContent(
+            string url = "http://localhost:5204/messagequeue/publish/EmailTemplateShouldBePopulated";
+
+            var requestBody = new StringContent(
                 JsonConvert.SerializeObject(emailNotification),
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await client.PostAsync(url, emailContent, cancellationToken);
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = requestBody
+            };
+
+            var response = await client.SendAsync(request, cancellationToken);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             return responseBody;
@@ -189,12 +194,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    private async Task PublishToMessageQueue(NotificationFromJavaDto notificationDto, CancellationToken cancellationToken)
+    private async Task PublishToMessageQueue(NotificationFromJavaDto notificationDto, string tenantIdentifier, CancellationToken cancellationToken)
     {
         try
         {
             var client = this.httpClientFactory.CreateClient("MessageQueueClient");
-            var url = "http://localhost:5204/api/messagequeue/publish/NotificationInitialized";
+
+            var url = "http://localhost:5204/messagequeue/publish/NotificationInitialized";
 
             // Instead of using ToMessage(), create a JObject with the exact structure expected by IdAndJObject
             var messageObject = new JObject
@@ -227,7 +233,14 @@ public class NotificationService : INotificationService
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await client.PostAsync(url, content, cancellationToken);
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = content
+            };
+
+            request.Headers.Add("X-Tenant-Identifier", tenantIdentifier);
+
+            var response = await client.SendAsync(request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
