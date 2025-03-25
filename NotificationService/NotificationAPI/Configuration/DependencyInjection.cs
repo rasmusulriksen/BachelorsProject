@@ -34,7 +34,6 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     /// <inheritdoc/>
     protected override void LoadConfigurations(IConfiguration configuration)
     {
-
         JsonConvert.DefaultSettings = () => new JsonSerializerSettings
         {
             ContractResolver = new CamelCasePropertyNamesContractResolver()
@@ -46,27 +45,27 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
         {
             throw new InvalidOperationException("ConnectionString is not set in the appsettings.json file.");
         }
-
     }
 
     /// <inheritdoc/>
     protected override void RegisterDependencies(Container container)
     {
-        container.RegisterSingleton<INotificationService, NotificationService>();
-        container.RegisterSingleton<INotificationRepository, NotificationRepository>();
-        container.RegisterSingleton<INotificationPreferencesService, NotificationPreferencesService>();
-        container.RegisterSingleton<INotificationPreferencesRepository, NotificationPreferencesRepository>();
+        // Register ConnectionStringFactory as scoped since it depends on IConfiguration
+        container.Register<ConnectionStringFactory>(Lifestyle.Scoped);
+
+        // Register repositories with scoped lifetime
+        container.Register<INotificationRepository, NotificationRepository>(Lifestyle.Scoped);
+        container.Register<INotificationPreferencesRepository, NotificationPreferencesRepository>(Lifestyle.Scoped);
+
+        // Register services with scoped lifetime
+        container.Register<INotificationService, NotificationService>(Lifestyle.Scoped);
+        container.Register<INotificationPreferencesService, NotificationPreferencesService>(Lifestyle.Scoped);
     }
 
     /// <inheritdoc/>
     protected override void ConfigureHttpClients(IServiceCollection services)
     {
         services.AddHttpClient("MessageQueueClient", client =>
-        {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
-        });
-
-        services.AddHttpClient("InAppNotificationClient", client =>
         {
             client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
         });

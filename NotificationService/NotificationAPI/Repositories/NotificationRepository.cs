@@ -19,24 +19,24 @@ using Visma.Ims.NotificationAPI.Model;
 /// </summary>
 public class NotificationRepository : INotificationRepository
 {
-    private readonly string connectionString;
+    private readonly ConnectionStringFactory connectionStringFactory;
     private readonly ILogFactory logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NotificationRepository"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
-    /// <param name="config">The configuration.</param>
-    public NotificationRepository(ILogFactory logger, IConfiguration config)
+    /// <param name="connectionStringFactory">The connection string factory.</param>
+    public NotificationRepository(ILogFactory logger, ConnectionStringFactory connectionStringFactory)
     {
         this.logger = logger;
-        this.connectionString = config.GetConnectionString("ConnectionString");
+        this.connectionStringFactory = connectionStringFactory;
     }
 
     /// <inheritdoc/>
-    public async Task<Notification> GetByIdAsync(Guid id)
+    public async Task<Notification> GetByIdAsync(Guid id, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         using var command = new NpgsqlCommand(
@@ -55,9 +55,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task<MyNotificationsResponse> GetForUserAsync(string userName, int page, int pageSize)
+    public async Task<MyNotificationsResponse> GetForUserAsync(string userName, int page, int pageSize, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         // Get total count
@@ -102,9 +102,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task CreateAsync(Notification notification)
+    public async Task CreateAsync(Notification notification, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         // If it's a new notification, generate a new GUID
@@ -133,9 +133,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task<Notification> UpdateAsync(Notification notification)
+    public async Task<Notification> UpdateAsync(Notification notification, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         // Convert JObject to string for storage
@@ -164,9 +164,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         using var command = new NpgsqlCommand(
@@ -177,9 +177,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task MarkAsReadAsync(Guid id)
+    public async Task MarkAsReadAsync(Guid id, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         using var command = new NpgsqlCommand(
@@ -190,9 +190,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task<long> GetUnreadCountForUserAsync(string userId)
+    public async Task<long> GetUnreadCountForUserAsync(string userId, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         using var command = new NpgsqlCommand(
@@ -204,9 +204,9 @@ public class NotificationRepository : INotificationRepository
     }
 
     /// <inheritdoc/>
-    public async Task<long> GetTotalCountForUserAsync(string userId)
+    public async Task<long> GetTotalCountForUserAsync(string userId, string tenantIdentifier)
     {
-        using var connection = new NpgsqlConnection(this.connectionString);
+        using var connection = new NpgsqlConnection(this.connectionStringFactory.CreateConnectionString(tenantIdentifier));
         await connection.OpenAsync();
 
         using var command = new NpgsqlCommand(

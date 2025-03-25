@@ -40,11 +40,12 @@ public class NotificationService : INotificationService
     /// Gets a notification by its ID.
     /// </summary>
     /// <param name="id">The ID of the notification to get.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>The notification.</returns>
-    public async Task<Notification> GetByIdAsync(Guid id)
+    public async Task<Notification> GetByIdAsync(Guid id, string tenantIdentifier)
     {
         this.logger.Log().Information("Getting notification with ID: {Id}", id);
-        return await this.repository.GetByIdAsync(id);
+        return await this.repository.GetByIdAsync(id, tenantIdentifier);
     }
 
     /// <summary>
@@ -53,21 +54,22 @@ public class NotificationService : INotificationService
     /// <param name="userName">The username of the user to get notifications for.</param>
     /// <param name="page">The page number to retrieve.</param>
     /// <param name="pageSize">The number of notifications per page.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>The notifications for the user.</returns>
-    public async Task<MyNotificationsResponse> GetForUserAsync(string userName, int page, int pageSize)
+    public async Task<MyNotificationsResponse> GetForUserAsync(string userName, int page, int pageSize, string tenantIdentifier)
     {
         this.logger.Log().Information("Getting notifications for user: {UserName}, page: {Page}, pageSize: {PageSize}", userName, page, pageSize);
-
-        return await this.repository.GetForUserAsync(userName, page, pageSize);
+        return await this.repository.GetForUserAsync(userName, page, pageSize, tenantIdentifier);
     }
 
     /// <summary>
     /// Creates a notification.
     /// </summary>
     /// <param name="notificationDTO">The notification to create.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task CreateAsync(NotificationFromJavaDto notificationDTO, CancellationToken cancellationToken)
+    public async Task CreateAsync(NotificationFromJavaDto notificationDTO, string tenantIdentifier, CancellationToken cancellationToken)
     {
         this.logger.Log().Information("Creating notification for user: {FeedUserId}", notificationDTO.FeedUserId);
 
@@ -75,7 +77,7 @@ public class NotificationService : INotificationService
         var notification = notificationDTO.ToNotification();
 
         // 2. Store in database
-        await this.repository.CreateAsync(notification);
+        await this.repository.CreateAsync(notification, tenantIdentifier);
 
         // 3. Publish NotificationInitialized event to message queue
         await this.PublishToMessageQueue(notificationDTO, cancellationToken);
@@ -91,55 +93,60 @@ public class NotificationService : INotificationService
     /// Updates a notification.
     /// </summary>
     /// <param name="notification">The notification to update.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>The updated notification.</returns>
-    public async Task<Notification> UpdateAsync(Notification notification)
+    public async Task<Notification> UpdateAsync(Notification notification, string tenantIdentifier)
     {
         this.logger.Log().Information("Updating notification with ID: {Id}", notification.Id);
-        return await this.repository.UpdateAsync(notification);
+        return await this.repository.UpdateAsync(notification, tenantIdentifier);
     }
 
     /// <summary>
     /// Deletes a notification.
     /// </summary>
     /// <param name="id">The ID of the notification to delete.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, string tenantIdentifier)
     {
         this.logger.Log().Information("Deleting notification with ID: {Id}", id);
-        await this.repository.DeleteAsync(id);
+        await this.repository.DeleteAsync(id, tenantIdentifier);
     }
 
     /// <summary>
     /// Marks a notification as read.
     /// </summary>
     /// <param name="id">The ID of the notification to mark as read.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task MarkAsReadAsync(Guid id)
+    public async Task MarkAsReadAsync(Guid id, string tenantIdentifier)
     {
         this.logger.Log().Information("Marking notification with ID: {Id} as read", id);
-        await this.repository.MarkAsReadAsync(id);
+        await this.repository.MarkAsReadAsync(id, tenantIdentifier);
     }
 
     /// <summary>
     /// Gets the unread count for a specific user.
     /// </summary>
     /// <param name="userId">The ID of the user to get the unread count for.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>The unread count for the user.</returns>
-    public async Task<long> GetUnreadCountForUserAsync(string userId)
+    public async Task<long> GetUnreadCountForUserAsync(string userId, string tenantIdentifier)
     {
         this.logger.Log().Information("Getting unread notification count for user: {UserId}", userId);
-        return await this.repository.GetUnreadCountForUserAsync(userId);
+        return await this.repository.GetUnreadCountForUserAsync(userId, tenantIdentifier);
     }
 
     /// <summary>
     /// Gets the total count for a specific user.
     /// </summary>
     /// <param name="userId">The ID of the user to get the total count for.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>The total count for the user.</returns>
-    public async Task<long> GetTotalCountForUserAsync(string userId)
+    public async Task<long> GetTotalCountForUserAsync(string userId, string tenantIdentifier)
     {
         this.logger.Log().Information("Getting total notification count for user: {UserId}", userId);
-        return await this.repository.GetTotalCountForUserAsync(userId);
+        return await this.repository.GetTotalCountForUserAsync(userId, tenantIdentifier);
     }
 
     /// <summary>
