@@ -138,7 +138,7 @@ public class EmailTemplateService : IEmailTemplateService
         string htmlContent = HandlebarsHelperExtensions.CompileTemplate(htmlTemplateText, context);
 
         // Try to compile text template
-        string textContent = "";
+        string textContent = string.Empty;
         if (File.Exists(textTemplatePath))
         {
             string textTemplateText = await File.ReadAllTextAsync(textTemplatePath, cancellationToken);

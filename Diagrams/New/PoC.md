@@ -88,8 +88,8 @@ flowchart TD
 
     FrontendDigitalPost -->|"Uploads document to a case"| Gateway
 
-    Gateway -->|"Authenticates, fetches tenant info"| ControlPlane
-
+    Gateway -->|"Authenticates <br> Fetches tenant info"| ControlPlane
+    
     Gateway -->|"Redirects client1 request"| LegacyMonolith1
 
     Gateway -->|"Redirects client2 request"| LegacyMonolith2
@@ -99,8 +99,6 @@ flowchart TD
     LegacyMonolith2 -->|"Publishes message to client2.queues.notifications"| NotificationAPI
 
     NotificationAPI-->|"Publishes message to client1.queues.emails_to_be_merged_into_template"|EmailTemplateAPI
-    
-    NotificationAPI-->|"POST client2.imscase.dk/alfresco/wcs/api/openesdh/notifications"|LegacyMonolith2NotificationWebScript
 
     EmailTemplateAPI-->|"Publishes message to client1.queues.emails_to_be_sent"|EmailSenderAPI
 

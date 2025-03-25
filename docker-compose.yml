@@ -56,7 +56,7 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: client1.imscase.dk
+      POSTGRES_DB: client1
     ports:
       - "5432:5432"
     volumes:
@@ -69,7 +69,7 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: client2.imscase.dk
+      POSTGRES_DB: client2
     ports:
       - "5431:5432"
     volumes:
@@ -119,18 +119,9 @@ networks:
     driver: bridge
 
 # Volumes
-# I point to some very specific "external" volumes, because I didn't manage to move the data from these volumes,
-# when I moved this docker-compose.yml file around
+# I accidenty deleted the old external volumes, so I need to populate these databases with data again. It should only really be an issue for the keycloak database.
 volumes:
   smtp4dev_data:
-    external: true
-    name: notificationservice_smtp4dev-data
   postgres_data1:
-    external: true
-    name: notificationservice_postgres_data1
   postgres_data2:
-    external: true
-    name: notificationservice_postgres_data2
   keycloak_data:
-    external: true
-    name: dev_keycloak_data

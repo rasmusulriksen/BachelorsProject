@@ -99,8 +99,6 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
     {
         try
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");
-
             var response = await client.GetAsync("http://localhost:5204/api/messagequeue/poll", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -150,7 +148,6 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
     {
         try
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298");
 
             await client.GetAsync(
                 $"http://localhost:5204/api/messagequeue/done/{messageId}", cancellationToken);

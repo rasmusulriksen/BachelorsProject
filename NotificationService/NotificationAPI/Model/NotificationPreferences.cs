@@ -12,9 +12,9 @@ namespace Visma.Ims.NotificationAPI.Model;
 public class NotificationPreference
 {
     /// <summary>
-    /// Gets or sets the email.
+    /// Gets or sets the username.
     /// </summary>
-    required public string Email { get; set; }
+    required public string UserName { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether email is enabled.
@@ -30,4 +30,9 @@ public class NotificationPreference
     /// Gets or sets a value indicating whether links are enabled.
     /// </summary>
     public bool LinksEnabled { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a value indicating whether case owner notifications are enabled.
+    /// </summary>
+    public bool CaseOwner { get; set; }
 }
