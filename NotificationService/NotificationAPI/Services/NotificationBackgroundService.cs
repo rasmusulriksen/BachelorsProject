@@ -100,7 +100,7 @@ public class NotificationBackgroundService : IRecurringBackgroundService
                     foreach (var notification in notifications)
                     {
                         // Find user preference
-                        NotificationPreference preference = await this.notificationPreferencesService.GetNotificationPreferenceObjectByUsernameAsync(notification.Message.UserName);
+                        NotificationPreference preference = await this.notificationPreferencesService.GetNotificationPreferenceObjectByUsernameAsync(notification.Message.UserName, tenantInfo.TenantIdentifier);
 
                         if (preference == null)
                         {

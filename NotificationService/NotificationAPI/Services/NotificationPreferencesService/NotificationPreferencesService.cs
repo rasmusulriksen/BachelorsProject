@@ -33,7 +33,7 @@ public class NotificationPreferencesService : INotificationPreferencesService
     /// <returns>The notification preference.</returns>
     public async Task<bool> Get1BoolByUsernameAsync(string username, string preferenceToLookup, string tenantIdentifier)
     {
-        NotificationPreference preference = await this.repository.GetByUsernameAsync(username);
+        NotificationPreference preference = await this.repository.GetByUsernameAsync(username, tenantIdentifier);
 
         // Try and get the preferenceToLookup value from preference. Dont hardcode it.
         // Also, if preferenceToLookup = "caseOwner", I want it to successfully retrieve the preference.CaseOwner value
@@ -52,8 +52,8 @@ public class NotificationPreferencesService : INotificationPreferencesService
     /// </summary>
     /// <param name="username">The username of the user to get the preference for.</param>
     /// <returns>The notification preference.</returns>
-    public async Task<NotificationPreference> GetNotificationPreferenceObjectByUsernameAsync(string username)
+    public async Task<NotificationPreference> GetNotificationPreferenceObjectByUsernameAsync(string username, string tenantIdentifier)
     {
-        return await this.repository.GetByUsernameAsync(username);
+        return await this.repository.GetByUsernameAsync(username, tenantIdentifier);
     }
 }

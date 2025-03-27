@@ -9,9 +9,10 @@ CREATE TABLE IF NOT EXISTS tenant.tenant (
     tenant_identifier VARCHAR(50) NOT NULL UNIQUE,
     tenant_name VARCHAR(100) NOT NULL,
     tenant_tier VARCHAR(20) NOT NULL,
+    database_connectionstring TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insert the new tenant
-INSERT INTO tenant.tenant (tenant_identifier, tenant_name, tenant_tier)
-VALUES (@TenantIdentifier, @TenantName, @TenantTier); 
+INSERT INTO tenant.tenant (tenant_identifier, tenant_name, tenant_tier, database_connectionstring)
+VALUES (@TenantIdentifier, @TenantName, @TenantTier, @DatabaseConnectionString); 

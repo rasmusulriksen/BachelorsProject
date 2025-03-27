@@ -34,8 +34,11 @@ public class TenantControlPanelService
         {
             this.logger.Log().Information($"Starting tenant onboarding process for tenant: {request.TenantIdentifier}");
 
-            // 1. Create a new tenant in the tenantcontrolpanel database
-            await CreateTenantRecord(request);
+            // Generate a secure password for the tenant database user
+            string tenantDbPassword = GenerateSecurePassword(24);
+
+            // Create a new tenant in the tenantcontrolpanel database with connection string
+            await CreateTenantRecord(request, tenantDbPassword);
             this.logger.Log().Information($"Created tenant record in tenantcontrolpanel database for tenant: {request.TenantIdentifier}");
 
             // 2. Create a new database for the tenant
@@ -57,6 +60,10 @@ public class TenantControlPanelService
             await ExecuteSqlScriptOnTenantDatabaseWithoutQuotedTenantIdentifier(tenantConnectionString, "Onboard/create_queues_schema.sql", request.TenantIdentifier);
             this.logger.Log().Information($"Created queues schema and tables for tenant: {request.TenantIdentifier}");
 
+            // 7. Create tenant-specific database user
+            await CreateTenantDatabaseUser(tenantConnectionString, request.TenantIdentifier, tenantDbPassword);
+            this.logger.Log().Information($"Created database user for tenant: {request.TenantIdentifier}");
+
             this.logger.Log().Information($"Successfully completed tenant onboarding process for tenant: {request.TenantIdentifier}");
         }
         catch (Exception ex)
@@ -75,6 +82,7 @@ public class TenantControlPanelService
             // 1. Delete the tenant record from the tenant control panel database first
             await ExecuteSqlScriptOnTenantDatabaseWithQuotedTenantIdentifier(tenantControlPanelConnectionString, "Teardown/teardown_tenant_record.sql", tenantIdentifier);
             this.logger.Log().Information($"Deleted tenant record for tenant: {tenantIdentifier}");
+
 
             // 2. Drop the tenant's database - this needs to be done in a separate connection without a transaction
             using var connection = new NpgsqlConnection(tenantsDatabaseConnectionString);
@@ -95,6 +103,12 @@ public class TenantControlPanelService
                 await dropCommand.ExecuteNonQueryAsync();
             }
 
+            // 3. Drop all tenant-specific roles from the PostgreSQL server
+            // This needs to be done on the server level database (postgres) or the tenants database
+            await ExecuteSqlScriptOnTenantDatabaseWithoutQuotedTenantIdentifier(tenantsDatabaseConnectionString, "Teardown/teardown_tenant_roles.sql", tenantIdentifier);
+
+            this.logger.Log().Information($"Dropped all roles for tenant: {tenantIdentifier}");
+
             this.logger.Log().Information($"Dropped database for tenant: {tenantIdentifier}");
             this.logger.Log().Information($"Successfully completed tenant teardown process for tenant: {tenantIdentifier}");
         }
@@ -105,15 +119,27 @@ public class TenantControlPanelService
         }
     }
 
-    private async Task CreateTenantRecord(OnboardTenantRequest request)
+    private async Task CreateTenantRecord(OnboardTenantRequest request, string tenantDbPassword)
     {
         // Read the SQL script
         string sqlScript = await File.ReadAllTextAsync(Path.Combine("SQL", "Onboard/create_tenant.sql"));
 
+        // Build the tenant-specific connection string
+        var builder = new NpgsqlConnectionStringBuilder(tenantsDatabaseConnectionString)
+        {
+            Database = request.TenantIdentifier,
+            Username = $"{request.TenantIdentifier}_user",
+            Password = tenantDbPassword
+        };
+
+        // Escape single quotes in the connection string for SQL
+        string escapedConnectionString = builder.ConnectionString.Replace("'", "''");
+
         sqlScript = sqlScript
             .Replace("@TenantIdentifier", $"'{request.TenantIdentifier}'")
             .Replace("@TenantName", $"'{request.TenantName}'")
-            .Replace("@TenantTier", $"'{request.TenantTier}'");
+            .Replace("@TenantTier", $"'{request.TenantTier}'")
+            .Replace("@DatabaseConnectionString", $"'{escapedConnectionString}'");
 
         // Execute the script on the tenant control panel database
         using var connection = new NpgsqlConnection(tenantControlPanelConnectionString);
@@ -176,5 +202,31 @@ public class TenantControlPanelService
 
         using var command = new NpgsqlCommand(sqlScript, connection);
         await command.ExecuteNonQueryAsync();
+    }
+
+    // Add this method to create the tenant database user
+    private async Task CreateTenantDatabaseUser(string connectionString, string tenantIdentifier, string password)
+    {
+        // Read the SQL script
+        string sqlScript = await File.ReadAllTextAsync(Path.Combine("SQL", "Onboard/create_tenant_db_user.sql"));
+
+        sqlScript = sqlScript
+            .Replace("@TenantIdentifier", tenantIdentifier)
+            .Replace("@TenantPassword", password);
+
+        // Execute the script on the tenant database
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        using var command = new NpgsqlCommand(sqlScript, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    // Add a method to generate a secure password
+    private string GenerateSecurePassword(int length)
+    {
+        // For now, just return "admin"
+        // TODO: Make this secure in a production scenario
+        return "admin";
     }
 }

@@ -25,6 +25,7 @@ public interface INotificationPreferencesService
     /// Gets the entire notification preference by username.
     /// </summary>
     /// <param name="username">The username of the user to get the preference for.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <returns>The notification preference.</returns>
-    Task<NotificationPreference> GetNotificationPreferenceObjectByUsernameAsync(string username);
+    Task<NotificationPreference> GetNotificationPreferenceObjectByUsernameAsync(string username, string tenantIdentifier);
 }
