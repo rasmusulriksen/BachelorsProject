@@ -1,7 +1,13 @@
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+// <copyright file="Notification.cs" company="Visma IMS A/S">
+// Copyright (c) Visma IMS A/S. All rights reserved.
+// Unauthorized reproduction of this file, via any medium is strictly prohibited.
+// Proprietary and confidential.
+// </copyright>
 
 namespace Visma.Ims.NotificationAPI.Model;
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 public class Notification
 {

@@ -16,9 +16,9 @@ public static class RefererToQueueTableMapper
 {
     private static readonly Dictionary<string, string> RefererToQueueMap = new Dictionary<string, string>
         {
-            { "http://localhost:5258", QueueTableNames.UnprocessedNotifications },
-            { "http://localhost:5298", QueueTableNames.EmailsToBePopulated },
-            { "http://localhost:5089", QueueTableNames.EmailsToBeSent },
+            { "http://notification-api:8080", QueueTableNames.UnprocessedNotifications }, // NotificationAPI
+            { "http://email-template-api:8080", QueueTableNames.EmailsToBePopulated }, // EmailTemplateAPI
+            { "http://email-sender-api:8080", QueueTableNames.EmailsToBeSent }, // EmailSenderAPI
         };
 
     /// <summary>

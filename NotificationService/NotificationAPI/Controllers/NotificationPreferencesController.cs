@@ -7,7 +7,7 @@
 namespace Visma.Ims.NotificationAPI.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.NotificationAPI.Services.NotificationPreferencesService;
 
 /// <summary>

@@ -21,13 +21,9 @@ public class ConnectionStringFactory
     public string CreateConnectionString(string tenantIdentifier)
     {
         var builder = new NpgsqlConnectionStringBuilder(this.baseConnectionString);
+        
         builder.Database = tenantIdentifier;
-
-        // Add connection pooling parameters to prevent "too many clients" errors. I dont want these.
-        // builder.Pooling = true;
-        // builder.MinPoolSize = 1;
-        // builder.MaxPoolSize = 5;  // Set a reasonable maximum pool size
-        // builder.ConnectionIdleLifetime = 30;  // Close idle connections after 30 seconds
+        builder.SearchPath = "queues";
 
         return builder.ConnectionString;
     }

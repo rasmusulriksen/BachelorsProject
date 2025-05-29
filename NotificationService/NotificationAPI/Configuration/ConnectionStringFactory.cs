@@ -21,7 +21,7 @@ public class ConnectionStringFactory
     public string CreateConnectionString(string tenantIdentifier)
     {
         var builder = new NpgsqlConnectionStringBuilder(this.baseConnectionString);
-        builder.Database = tenantIdentifier;
+        builder.Database = tenantIdentifier;        
         return builder.ConnectionString;
     }
 } 

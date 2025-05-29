@@ -11,7 +11,6 @@ namespace Visma.Ims.NotificationAPI.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using SimpleInjector;
-using Visma.Ims.Common.Abstractions.Logging;
 using Visma.Ims.Common.Infrastructure.DependencyInjection;
 using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.NotificationAPI.Repositories;
@@ -67,7 +66,8 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         services.AddHttpClient("MessageQueueClient", client =>
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5258");
+            client.BaseAddress = new Uri("http://message-queue-api:8080");
+            client.DefaultRequestHeaders.Referrer = new Uri("http://notification-api:8080");
         });
     }
 }

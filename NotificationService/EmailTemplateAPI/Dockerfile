@@ -2,15 +2,19 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-# This COPY uses the build context of current directory due to above docker-compose change
-COPY ["./EmailTemplateAPI.csproj", "./"]
-RUN dotnet restore "./EmailTemplateAPI.csproj"
+# Copy Common project with all its build files
+COPY ["Common/Directory.Build.props", "Common/"]
+COPY ["Common/Directory.Build.allprojects.targets", "Common/"]
+COPY ["Common/stylecop.json", "Common/"]
+COPY ["Common/stylecop.ruleset", "Common/"]
+COPY ["Common/", "Common/"]
 
-# Copy the entire source
-COPY . .
+# Copy the EmailTemplateAPI project
+COPY ["BachelorsProject/NotificationService/EmailTemplateAPI/", "BachelorsProject/NotificationService/EmailTemplateAPI/"]
 
-WORKDIR "/app"
-RUN dotnet publish -c Release -o /app/publish
+# Restore and build
+RUN dotnet restore "BachelorsProject/NotificationService/EmailTemplateAPI/EmailTemplateAPI.csproj"
+RUN dotnet publish "BachelorsProject/NotificationService/EmailTemplateAPI/EmailTemplateAPI.csproj" -c Debug -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0

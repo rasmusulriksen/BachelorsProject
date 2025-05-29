@@ -7,7 +7,7 @@
 namespace Visma.Ims.EmailTemplateAPI;
 
 using Microsoft.AspNetCore.Mvc;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 
 /// <summary>
 /// Controller for managing email templates.

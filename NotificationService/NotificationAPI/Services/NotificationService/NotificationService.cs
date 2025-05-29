@@ -10,7 +10,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.NotificationAPI.Model;
 using Visma.Ims.NotificationAPI.Repositories;
 
@@ -154,9 +154,10 @@ public class NotificationService : INotificationService
     /// </summary>
     /// <param name="message">The message to send.</param>
     /// <param name="linksEnabled">A value indicating whether links are enabled.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the response body.</returns>
-    public async Task<string> CreateEmailNotification(Message message, bool linksEnabled, CancellationToken cancellationToken = default)
+    public async Task<string> CreateEmailNotification(Message message, bool linksEnabled, string tenantIdentifier, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -170,7 +171,7 @@ public class NotificationService : INotificationService
 
             var client = this.httpClientFactory.CreateClient("MessageQueueClient");
 
-            string url = "http://localhost:5204/messagequeue/publish/EmailTemplateShouldBePopulated";
+            string url = "messagequeue/publish/EmailTemplateShouldBePopulated";
 
             var requestBody = new StringContent(
                 JsonConvert.SerializeObject(emailNotification),
@@ -181,6 +182,8 @@ public class NotificationService : INotificationService
             {
                 Content = requestBody
             };
+
+            request.Headers.Add("X-Tenant-Identifier", tenantIdentifier);
 
             var response = await client.SendAsync(request, cancellationToken);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -200,7 +203,7 @@ public class NotificationService : INotificationService
         {
             var client = this.httpClientFactory.CreateClient("MessageQueueClient");
 
-            var url = "http://localhost:5204/messagequeue/publish/NotificationInitialized";
+            var url = "messagequeue/publish/NotificationInitialized";
 
             // Instead of using ToMessage(), create a JObject with the exact structure expected by IdAndJObject
             var messageObject = new JObject

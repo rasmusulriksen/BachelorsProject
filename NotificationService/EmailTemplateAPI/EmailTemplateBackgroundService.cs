@@ -7,8 +7,9 @@
 namespace Visma.Ims.EmailTemplateAPI;
 
 using System.Text.Json.Serialization;
-using Visma.Ims.Common.Abstractions.HostedService;
-using Visma.Ims.Common.Abstractions.Logging;
+using Microsoft.AspNetCore.Hosting;
+using Visma.Ims.Common.Infrastructure.HostedService;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.EmailTemplateAPI.Handlebars;
 using Visma.Ims.EmailTemplateAPI.Model;
 using Visma.Ims.NotificationAPI.Model;
@@ -21,31 +22,33 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
 {
     private readonly ILogFactory logger;
     private readonly IHttpClientFactory httpClientFactory;
-    private readonly IEmailTemplateService emailTemplateService;
     private readonly IConfiguration configuration;
+    private readonly IEmailTemplateService emailTemplateService;
+    private readonly IWebHostEnvironment hostEnvironment;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EmailTemplateBackgroundService"/> class.
     /// </summary>
-    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="logger">The logger.</param>
-    /// <param name="hostEnvironment">The host environment.</param>
-    /// <param name="emailTemplateService">The email template service.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="configuration">The configuration.</param>
+    /// <param name="emailTemplateService">The email template service.</param>
+    /// <param name="hostEnvironment">The web host environment.</param>
     public EmailTemplateBackgroundService(
-        IHttpClientFactory httpClientFactory,
         ILogFactory logger,
-        IHostEnvironment hostEnvironment,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
         IEmailTemplateService emailTemplateService,
-        IConfiguration configuration)
+        IWebHostEnvironment hostEnvironment)
     {
-        this.httpClientFactory = httpClientFactory;
         this.logger = logger;
-        this.emailTemplateService = emailTemplateService;
+        this.httpClientFactory = httpClientFactory;
         this.configuration = configuration;
+        this.emailTemplateService = emailTemplateService;
+        this.hostEnvironment = hostEnvironment;
 
         // Register Handlebars helpers and partials
-        HandlebarsHelperExtensions.RegisterAllHelpersAndPartials(hostEnvironment, logger);
+        HandlebarsHelperExtensions.RegisterAllHelpersAndPartials(this.hostEnvironment, logger);
     }
 
     /// <inheritdoc/>
@@ -129,15 +132,13 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
     {
         try
         {
-            // Create a new HTTP client for this specific request
-            using var client = this.httpClientFactory.CreateClient("MessageQueueClient");
+            var client = this.httpClientFactory.CreateClient();
 
-            // Create the request message with the proper headers
-            using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:5204/messagequeue/poll");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "http://message-queue-api:8080/messagequeue/poll");
             request.Headers.Add("X-Tenant-Identifier", tenantIdentifier);
+            request.Headers.Referrer = new Uri("http://email-template-api:8080");
 
-            // Send the request
-            using var response = await client.SendAsync(request, cancellationToken);
+            var response = await client.SendAsync(request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -166,7 +167,6 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
 
         try
         {
-
             OutboundEmail outboundEmailMessage = await this.emailTemplateService.ProcessEmailTemplateAsync(emailActivity.EmailActivity, userLanguage, cancellationToken);
 
             bool publishSuccess = await this.emailTemplateService.PublishProcessedEmailAsync(outboundEmailMessage, emailActivity.Id, tenantInfo, cancellationToken);
@@ -187,15 +187,13 @@ public class EmailTemplateBackgroundService : IRecurringBackgroundService
     {
         try
         {
-            // Create a new HTTP client for this specific request
-            using var client = this.httpClientFactory.CreateClient("MessageQueueClient");
+            var client = this.httpClientFactory.CreateClient();
 
-            // Create the request message with the proper headers
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:5204/messagequeue/done/{messageId}");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"http://message-queue-api:8080/messagequeue/done/{messageId}");
             request.Headers.Add("X-Tenant-Identifier", tenantInfo.TenantIdentifier);
+            request.Headers.Referrer = new Uri("http://email-template-api:8080");
 
-            // Send the request and ensure it's properly disposed
-            using var response = await client.SendAsync(request, cancellationToken);
+            var response = await client.SendAsync(request, cancellationToken);
             
             if (!response.IsSuccessStatusCode)
             {

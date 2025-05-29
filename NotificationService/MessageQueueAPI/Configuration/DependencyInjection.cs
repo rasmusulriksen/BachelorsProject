@@ -12,9 +12,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleInjector;
-using Visma.Ims.Common.Abstractions.Logging;
-using Visma.Ims.Common.Infrastructure.DependencyInjection;
 using Visma.Ims.Common.Infrastructure.Logging;
+using Visma.Ims.Common.Infrastructure.DependencyInjection;
 using Visma.Ims.MessageQueueAPI.Configuration;
 using Visma.Ims.NotificationService.MessageQueueAPI;
 

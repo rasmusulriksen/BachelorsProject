@@ -8,10 +8,12 @@ namespace Visma.Ims.NotificationAPI;
 
 using Model;
 using Newtonsoft.Json;
-using Visma.Ims.Common.Abstractions.HostedService;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.HostedService;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.NotificationAPI.Services.NotificationPreferencesService;
 using Visma.Ims.NotificationAPI.Services.NotificationService;
+using System.Net.Http.Headers;
+using System.Net.Http;
 
 /// <summary>
 /// Notification polling service.
@@ -80,10 +82,11 @@ public class NotificationBackgroundService : IRecurringBackgroundService
                     this.logger.Log().Information($"Polling for: {tenantInfo.TenantUrl}");
 
                     var client = this.httpClientFactory.CreateClient("MessageQueueClient");
+                    client.DefaultRequestHeaders.Add("X-Tenant-Identifier", tenantInfo.TenantIdentifier);
 
-                    var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:5204/messagequeue/poll");
-
-                    request.Headers.Add("X-Tenant-Identifier", tenantInfo.TenantIdentifier);
+                    // Create request message with Referer header
+                    var request = new HttpRequestMessage(HttpMethod.Get, "messagequeue/poll");
+                    request.Headers.Referrer = new Uri("http://notification-api:8080");
 
                     var response = await client.SendAsync(request, cancellationToken);
 
@@ -117,11 +120,13 @@ public class NotificationBackgroundService : IRecurringBackgroundService
                             // Send email notification if enabled
                             if (preference.EmailEnabled)
                             {
-                                await this.notificationService.CreateEmailNotification(notification.Message, linksEnabled, cancellationToken);
+                                await this.notificationService.CreateEmailNotification(notification.Message, linksEnabled, tenantInfo.TenantIdentifier, cancellationToken);
                             }
 
                             // Mark the notification as done
-                            await client.GetAsync($"http://localhost:5204/messagequeue/done/{notification.Id}", cancellationToken);
+                            var doneRequest = new HttpRequestMessage(HttpMethod.Get, $"messagequeue/done/{notification.Id}");
+                            doneRequest.Headers.Referrer = new Uri("http://notification-api:8080");
+                            await client.SendAsync(doneRequest, cancellationToken);
                         }
                     }
                 });

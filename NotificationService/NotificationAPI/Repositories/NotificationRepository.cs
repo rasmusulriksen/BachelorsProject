@@ -10,7 +10,7 @@ using System.Data;
 using Npgsql;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.NotificationAPI.Configuration;
 using Visma.Ims.NotificationAPI.Model;
 

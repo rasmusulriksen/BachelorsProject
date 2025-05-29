@@ -11,7 +11,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 
 public class TenantControlPanelService
 {
@@ -165,8 +165,6 @@ public class TenantControlPanelService
         if (!dbExists)
         {
             // Create new database for tenant
-            // Note: We're using parameterless command for DDL statements since
-            // Postgres doesn't support parameters for database names
             using var createCommand = new NpgsqlCommand($"CREATE DATABASE {tenantIdentifier} WITH OWNER = admin;", connection);
             await createCommand.ExecuteNonQueryAsync();
         }
@@ -204,7 +202,6 @@ public class TenantControlPanelService
         await command.ExecuteNonQueryAsync();
     }
 
-    // Add this method to create the tenant database user
     private async Task CreateTenantDatabaseUser(string connectionString, string tenantIdentifier, string password)
     {
         // Read the SQL script
@@ -222,11 +219,46 @@ public class TenantControlPanelService
         await command.ExecuteNonQueryAsync();
     }
 
-    // Add a method to generate a secure password
     private string GenerateSecurePassword(int length)
     {
         // For now, just return "admin"
         // TODO: Make this secure in a production scenario
         return "admin";
+    }
+
+    /// <summary>
+    /// Retrieves the database connection string for a specific tenant
+    /// </summary>
+    /// <param name="tenantIdentifier">The unique identifier for the tenant</param>
+    /// <returns>The database connection string for the tenant</returns>
+    public async Task<string> GetTenantConnectionString(string tenantIdentifier)
+    {
+        try
+        {
+            this.logger.Log().Information($"Retrieving database connection string for tenant: {tenantIdentifier}");
+
+            using var connection = new NpgsqlConnection(tenantControlPanelConnectionString);
+            await connection.OpenAsync();
+
+            using var command = new NpgsqlCommand(
+                "SELECT database_connectionstring FROM tenant.tenant WHERE tenant_identifier = @tenant_id;",
+                connection);
+            command.Parameters.AddWithValue("tenant_id", tenantIdentifier);
+
+            var result = await command.ExecuteScalarAsync();
+
+            if (result == null || result == DBNull.Value)
+            {
+                throw new KeyNotFoundException($"No tenant found with identifier: {tenantIdentifier}");
+            }
+
+            this.logger.Log().Information($"Successfully retrieved connection string for tenant: {tenantIdentifier}");
+            return result.ToString();
+        }
+        catch (Exception ex)
+        {
+            this.logger.Log().Error(ex, $"Error retrieving connection string for tenant: {tenantIdentifier}");
+            throw new InvalidOperationException($"Failed to retrieve connection string for tenant: {tenantIdentifier}", ex);
+        }
     }
 }

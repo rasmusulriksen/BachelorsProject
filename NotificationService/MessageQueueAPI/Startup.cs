@@ -27,7 +27,7 @@ public class Startup(IConfiguration configuration, IWebHostEnvironment env)
 : StartupBase(configuration, env)
 {
     /// <inheritdoc/>
-    protected override Container GetDiContainer(
+    protected override Container GetDependencyInjectionContainer(
         IServiceCollection services,
         IConfiguration configuration,
         IWebHostEnvironment env)

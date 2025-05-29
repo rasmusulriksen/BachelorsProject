@@ -51,7 +51,7 @@ flowchart TD
     subgraph ApplicationPlane
 
         subgraph LegacyMonolith1[LegacyMonolith, client1]
-        direction LR
+            direction LR
             LegacyMonolith1Description["\- Java monolith <br> \- Built on Alfresco ECM <br> \- Will be gradually outphased for microservices"]:::description
             LegacyMonolith1DB@{ shape: cyl, label: "LegacyMonolith1DB" }
         end

@@ -8,7 +8,7 @@ namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.NotificationService.MessageQueueAPI.Model;
 
 /// <summary>
@@ -114,11 +114,20 @@ public class MessageQueueController : ControllerBase
 
     private string GetReferer()
     {
+        // Log all headers received
+        this.logger.Log().Information("Received headers:");
+        foreach (var header in this.HttpContext.Request.Headers)
+        {
+            this.logger.Log().Information($"Header: {header.Key} = {string.Join(", ", header.Value)}");
+        }
+
         if (this.HttpContext.Request.Headers.TryGetValue("Referer", out var refererUrl))
         {
+            this.logger.Log().Information($"Found Referer header: {refererUrl}");
             return refererUrl.ToString();
         }
 
+        this.logger.Log().Warning("Referer header not found in request");
         throw new ArgumentException("Referer header not found in the request");
     }
 }

@@ -12,8 +12,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
 using Newtonsoft.Json.Linq;
-using Visma.Ims.Common.Abstractions.Logging;
-using Visma.Ims.Common.Abstractions.Queues;
+using Visma.Ims.Common.Infrastructure.Logging;
+using Visma.Ims.Common.Infrastructure.Queues;
 using Visma.Ims.Common.Infrastructure.Tenant;
 using Visma.Ims.MessageQueueAPI.Configuration;
 using Visma.Ims.NotificationService.MessageQueueAPI.Model;
@@ -54,7 +54,7 @@ public class MessageQueueRepo : IMessageQueueRepo
         string queueName = EventNameToDbTableMapper.GetDbTableForEventName(eventName);
 
         // Check if we need to log connection statistics
-        await this.CheckConnectionCountAsync(tenantIdentifier);
+        // await this.CheckConnectionCountAsync(tenantIdentifier);
 
         // Create a new inserter for this specific operation rather than caching it
         var connectionInfo = BuildDbConnection(connectionString);
@@ -86,7 +86,7 @@ public class MessageQueueRepo : IMessageQueueRepo
         string queueName = RefererToQueueTableMapper.GetQueueTableName(referer);
 
         // Check if we need to log connection statistics
-        await this.CheckConnectionCountAsync(tenantIdentifier);
+        // await this.CheckConnectionCountAsync(tenantIdentifier);
 
         // Create a new processor for this specific operation rather than caching it
         var connectionInfo = BuildDbConnection(connectionString);
@@ -138,49 +138,6 @@ public class MessageQueueRepo : IMessageQueueRepo
         }
     }
 
-    // Periodically check the connection count to help diagnose issues
-    private async Task CheckConnectionCountAsync(string tenantIdentifier)
-    {
-        if (DateTime.UtcNow - lastConnectionCheckTime < connectionCheckInterval)
-        {
-            return; // Only check once per minute to avoid excessive queries
-        }
-        
-        lastConnectionCheckTime = DateTime.UtcNow;
-        
-        try
-        {
-            var connectionString = this.connectionStringFactory.CreateConnectionString(tenantIdentifier);
-            var builder = new NpgsqlConnectionStringBuilder(connectionString);
-            builder.Database = "postgres"; // Use postgres database for admin queries
-            
-            using (var connection = new NpgsqlConnection(builder.ConnectionString))
-            {
-                await connection.OpenAsync();
-                
-                // Get total connection count
-                using (var cmd = new NpgsqlCommand("SELECT count(*) FROM pg_stat_activity", connection))
-                {
-                    var count = await cmd.ExecuteScalarAsync();
-                    this.logger.Log().Information("Current PostgreSQL connections: {Count}", count);
-                }
-                
-                // Get idle connection count
-                using (var cmd = new NpgsqlCommand(
-                    "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle'", connection))
-                {
-                    var count = await cmd.ExecuteScalarAsync();
-                    this.logger.Log().Information("Current idle PostgreSQL connections: {Count}", count);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Just log the error and continue
-            this.logger.Log().Warning(ex, "Failed to check connection count");
-        }
-    }
-
     private static TenantDatabaseConnectionInfoDto BuildDbConnection(string connectionString)
     {
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
@@ -199,7 +156,8 @@ public class MessageQueueRepo : IMessageQueueRepo
             Port = builder.Port.ToString(),
             Database = builder.Database,
             User = builder.Username,
-            Password = builder.Password
+            Password = builder.Password,
+            Schema = builder.SearchPath
         };
     }
 }

@@ -1,61 +1,73 @@
 version: "3.8"
 services:
   # APIs
-  # notification-api:
-  #   build:
-  #     context: NotificationService/NotificationAPI
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5300:80"
-  #     - "5000:5000"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #   networks:
-  #     - local_network
+  notification-api:
+    build:
+      context: ..
+      dockerfile: BachelorsProject/NotificationService/NotificationAPI/Dockerfile
+    ports:
+      - "5258:8080"
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - local_network
 
-  # email-template-api:
-  #   build:
-  #     context: NotificationService/EmailTemplateAPI
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5298:80"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #   depends_on:
-  #     - smtp4dev
-  #   networks:
-  #     - local_network
+  email-template-api:
+    build:
+      context: ..
+      dockerfile: BachelorsProject/NotificationService/EmailTemplateAPI/Dockerfile
+    ports:
+      - "5298:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
+    networks:
+      - local_network
 
-  # email-sender-api:
-  #   build:
-  #     context: NotificationService/EmailSenderAPI
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5299:80"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #   depends_on:
-  #     - smtp4dev
-  #   networks:
-  #     - local_network
+  email-sender-api:
+    build:
+      context: ..
+      dockerfile: BachelorsProject/NotificationService/EmailSenderAPI/Dockerfile
+    ports:
+      - "5089:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - smtp4dev
+    networks:
+      - local_network
 
-  # message-queue-api:
-  #   build:
-  #     context: NotificationService/MessageQueueAPI
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5301:80"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #   networks:
-  #     - local_network
+  message-queue-api:
+    build:
+      context: ..
+      dockerfile: BachelorsProject/NotificationService/MessageQueueAPI/Dockerfile
+    ports:
+      - "5204:80"
+      - "2222:2222"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOTNET_USE_POLLING_FILE_WATCHER=true
+      - ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS=true
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    command: -c max_connections=200
+    networks:
+      - local_network
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
 
   # Databases
+  
+  # The database server that contains several databases (one for each tenant). It has a schema for notifications and queues.
   postgres-tenant-service-databases:
     image: postgres:latest
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
+      POSTGRES_DB: tenant-service-databases
     ports:
       - "5432:5432"
     volumes:
@@ -63,6 +75,7 @@ services:
     networks:
       - local_network
 
+  # The controlpanel database where tier and tenant information is stored
   postgres-tenant-controlpanel:
     image: postgres:latest
     environment:

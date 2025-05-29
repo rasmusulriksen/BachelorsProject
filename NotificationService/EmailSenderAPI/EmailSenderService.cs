@@ -6,8 +6,14 @@
 
 namespace Visma.Ims.EmailSenderAPI;
 
+using System.Net;
 using System.Net.Mail;
-using Visma.Ims.Common.Abstractions.Logging;
+using System.Text.Json;
+using Microsoft.Extensions.Options;
+using Visma.Ims.EmailSenderAPI.Configuration;
+using Visma.Ims.EmailSenderAPI.Model;
+using Visma.Ims.Common.Infrastructure.Logging;
+using Visma.Ims.NotificationAPI.Model;
 
 /// <summary>
 /// Represents the email sender service.
@@ -17,10 +23,9 @@ public interface IEmailSenderService
     /// <summary>
     /// Sends an email asynchronously.
     /// </summary>
-    /// <param name="subject">The subject of the email.</param>
-    /// <param name="body">The body of the email.</param>
+    /// <param name="outboundEmail">The outbound email to send.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task SendEmailAsync(string subject, string body);
+    Task SendEmailAsync(OutboundEmail outboundEmail);
 }
 
 /// <summary>
@@ -42,24 +47,23 @@ public class EmailSenderService : IEmailSenderService
     /// <summary>
     /// Sends an email asynchronously.
     /// </summary>
-    /// <param name="subject">The subject of the email.</param>
-    /// <param name="body">The body of the email.</param>
+    /// <param name="outboundEmail">The outbound email to send.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task SendEmailAsync(string subject, string body)
+    public async Task SendEmailAsync(OutboundEmail outboundEmail)
     {
-        using (var client = new SmtpClient("localhost", 2526))
+        using (var client = new SmtpClient("smtp4dev", 25))
         {
             var mailMessage = new MailMessage
             {
-                From = new MailAddress("noreply@example.com"),
-                Subject = subject,
-                Body = body,
+                From = new MailAddress(outboundEmail.FromEmail),
+                Subject = outboundEmail.Subject,
+                Body = outboundEmail.HtmlBody,
                 IsBodyHtml = true,
             };
-            mailMessage.To.Add("recipient@example.com");
+            mailMessage.To.Add(outboundEmail.ToEmail);
 
             await client.SendMailAsync(mailMessage);
-            this.logger.Log().Information("Email sent successfully");
+            this.logger.Log().Information("Email sent successfully to {ToEmail} with subject '{Subject}'", outboundEmail.ToEmail, outboundEmail.Subject);
         }
     }
 }

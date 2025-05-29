@@ -7,7 +7,7 @@
 namespace Visma.Ims.NotificationService.MessageQueueAPI;
 
 using Newtonsoft.Json.Linq;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.Common.Infrastructure.Queues;
 using Visma.Ims.Common.Infrastructure.Tenant;
 

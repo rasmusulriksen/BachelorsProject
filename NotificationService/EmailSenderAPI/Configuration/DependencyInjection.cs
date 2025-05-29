@@ -8,12 +8,15 @@
 
 namespace Visma.Ims.EmailSenderAPI.Configuration;
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using SimpleInjector;
-using Visma.Ims.Common.Abstractions.Logging;
-using Visma.Ims.Common.Infrastructure.DependencyInjection;
+using Visma.Ims.EmailSenderAPI.Model;
 using Visma.Ims.Common.Infrastructure.Logging;
+using Visma.Ims.Common.Infrastructure.DependencyInjection;
 
 /// <summary>
 /// Represents the dependency injection configuration for the application.
@@ -47,7 +50,7 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         services.AddHttpClient("MessageQueueClient", client =>
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5089");
+            client.DefaultRequestHeaders.Referrer = new Uri("http://email-sender-api:8080");
         });
     }
 }

@@ -77,7 +77,8 @@ public interface INotificationService
     /// </summary>
     /// <param name="message">The message to send.</param>
     /// <param name="linksEnabled">A value indicating whether links are enabled.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the response body.</returns>
-    Task<string> CreateEmailNotification(Message message, bool linksEnabled, CancellationToken cancellationToken = default);
+    Task<string> CreateEmailNotification(Message message, bool linksEnabled, string tenantIdentifier, CancellationToken cancellationToken = default);
 }

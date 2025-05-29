@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Text;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 
 /// <summary>
 /// Extension methods for Handlebars helpers and partials.

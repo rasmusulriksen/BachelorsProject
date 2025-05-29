@@ -11,7 +11,6 @@ namespace Visma.Ims.EmailTemplateAPI.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using SimpleInjector;
-using Visma.Ims.Common.Abstractions.Logging;
 using Visma.Ims.Common.Infrastructure.DependencyInjection;
 using Visma.Ims.Common.Infrastructure.Logging;
 
@@ -48,7 +47,7 @@ public class DependencyInjection(IServiceCollection services, IConfiguration con
     {
         services.AddHttpClient("MessageQueueClient", client =>
         {
-            client.DefaultRequestHeaders.Referrer = new Uri("http://localhost:5298"); // This tells the MessageQueueAPI which service is calling it. With this, it can map the caller to a queue name/topic (db table).
+            client.DefaultRequestHeaders.Referrer = new Uri("http://email-template-api:8080"); // This tells the MessageQueueAPI which service is calling it
         });
     }
 }

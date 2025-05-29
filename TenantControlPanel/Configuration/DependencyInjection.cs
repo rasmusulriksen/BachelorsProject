@@ -9,7 +9,7 @@
 namespace Visma.Ims.TenantControlPanel.Configuration;
 
 using SimpleInjector;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 using Visma.Ims.Common.Infrastructure.DependencyInjection;
 using Visma.Ims.Common.Infrastructure.Logging;
 using Microsoft.Extensions.Configuration;

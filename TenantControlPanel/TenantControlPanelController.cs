@@ -8,7 +8,7 @@ namespace Visma.Ims.TenantControlPanel;
 
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
-using Visma.Ims.Common.Abstractions.Logging;
+using Visma.Ims.Common.Infrastructure.Logging;
 
 /// <summary>
 /// Controller for TenantControlPanel operations.
@@ -42,5 +42,30 @@ public class TenantControlPanelController : ControllerBase
     {
         await this.tenantControlPanelService.TeardownTenant(tenantIdentifier);
         return this.Ok($"Successfully teared down tenant: {tenantIdentifier}");
+    }
+
+    /// <summary>
+    /// Retrieves the database connection string for a specific tenant
+    /// </summary>
+    /// <param name="tenantIdentifier">The unique identifier for the tenant</param>
+    /// <returns>The database connection string for the tenant</returns>
+    [HttpGet("connectionstring/{tenantIdentifier}")]
+    public async Task<IActionResult> GetTenantConnectionString(string tenantIdentifier)
+    {
+        try
+        {
+            var connectionString = await tenantControlPanelService.GetTenantConnectionString(tenantIdentifier);
+            
+            return Ok(connectionString);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { Error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.Log().Error(ex, $"Error retrieving connection string for tenant: {tenantIdentifier}");
+            return StatusCode(500, new { Error = "An error occurred while retrieving the connection string" });
+        }
     }
 }

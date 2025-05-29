@@ -176,7 +176,7 @@ public class EmailTemplateService : IEmailTemplateService
         {
             var client = this.httpClientFactory.CreateClient("MessageQueueClient");
 
-            string url = $"{tenantInfo.TenantUrl}/messagequeue/publish/EmailTemplateHasBeenPopulated";
+            string url = "http://message-queue-api:8080/messagequeue/publish/EmailTemplateHasBeenPopulated";
             this.logger.LogInformation("Publishing email to {PublishUrl} for tenant {TenantIdentifier}", url, tenantInfo.TenantIdentifier);
 
             var requestBody = new StringContent(JsonSerializer.Serialize(email), Encoding.UTF8, "application/json");
