@@ -84,7 +84,7 @@ public class TenantControlPanelService
             this.logger.Log().Information($"Deleted tenant record for tenant: {tenantIdentifier}");
 
 
-            // 2. Drop the tenant's database - this needs to be done in a separate connection without a transaction
+            // 2. Drop the tenant's database
             using var connection = new NpgsqlConnection(tenantsDatabaseConnectionString);
             await connection.OpenAsync();
 
@@ -104,7 +104,6 @@ public class TenantControlPanelService
             }
 
             // 3. Drop all tenant-specific roles from the PostgreSQL server
-            // This needs to be done on the server level database (postgres) or the tenants database
             await ExecuteSqlScriptOnTenantDatabaseWithoutQuotedTenantIdentifier(tenantsDatabaseConnectionString, "Teardown/teardown_tenant_roles.sql", tenantIdentifier);
 
             this.logger.Log().Information($"Dropped all roles for tenant: {tenantIdentifier}");

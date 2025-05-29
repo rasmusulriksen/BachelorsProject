@@ -35,9 +35,6 @@ public class NotificationPreferencesService : INotificationPreferencesService
     {
         NotificationPreference preference = await this.repository.GetByUsernameAsync(username, tenantIdentifier);
 
-        // Try and get the preferenceToLookup value from preference. Dont hardcode it.
-        // Also, if preferenceToLookup = "caseOwner", I want it to successfully retrieve the preference.CaseOwner value
-        // This means that it must be case agnostic
         var property = preference.GetType().GetProperty(preferenceToLookup);
         if (property != null)
         {

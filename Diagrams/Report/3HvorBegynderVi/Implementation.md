@@ -304,7 +304,7 @@ sequenceDiagram
         end
 ```
 
-### Cursor's suggestion for a custom solution that is less coupled than the one above
+### Suggestion for a custom solution that is less coupled than the one above
 
 ```mermaid
 sequenceDiagram
